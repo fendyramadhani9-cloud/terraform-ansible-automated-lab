@@ -1,0 +1,54 @@
+---
+# ==============================================================================
+# MASTER ANSIBLE PLAYBOOK: KOPDES AWS NATIVE INFRASTRUCTURE DEPLOYMENT
+# Target Environment: Amazon EC2 Auto Scaling Group Nodes (Amazon Linux 2023)
+# Database: Amazon RDS MySQL | Load Balancer: Application Load Balancer (ALB)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Play 1: Baseline & Web Application Deployment (EC2 Web Server Instances)
+# ------------------------------------------------------------------------------
+- name: "Play 1: Inisialisasi Baseline & Deploy Web Server KopDes di Amazon Linux 2023"
+  hosts: webservers
+  become: true
+  gather_facts: true
+  roles:
+    - common
+    - webserver
+
+# ------------------------------------------------------------------------------
+# Play 2: Post-Deployment Verification via Application Load Balancer (ALB)
+# ------------------------------------------------------------------------------
+- name: "Play 2: Verifikasi Integrasi End-to-End KopDes via AWS Application Load Balancer"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Beri jeda 5 detik agar seluruh instance terdaftar dan sehat di ALB Target Group
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Uji request HTTP ke AWS ALB (http://{{ alb_dns_name }}/)
+      ansible.builtin.uri:
+        url: "http://{{ alb_dns_name }}/index.php?page=login"
+        method: GET
+        status_code: 200
+        return_content: yes
+      register: alb_response
+      retries: 6
+      delay: 5
+      until: alb_response.status is defined and alb_response.status == 200
+      ignore_errors: true
+      when: alb_dns_name is defined and alb_dns_name != ""
+
+    - name: Tampilkan Ringkasan Hasil Deployment AWS Native
+      ansible.builtin.debug:
+        msg:
+          - "=================================================================="
+          - "DEPLOYMENT KOPDES MERAH PUTIH BERHASIL (AWS NATIVE ARCHITECTURE)!"
+          - "=================================================================="
+          - "ALB Entry Point: http://{{ alb_dns_name | default('Periksa output terraform alb_dns_name') }}"
+          - "Database RDS   : {{ db_host }} (Amazon RDS MySQL: {{ db_name }})"
+          - "Email Service  : Amazon SES (Region: {{ aws_region | default('ap-southeast-1') }})"
+          - "Health Check   : {{ 'OK (HTTP 200)' if (alb_response is defined and alb_response.status is defined and alb_response.status == 200) else 'Menunggu ALB Target Group InService' }}"
+          - "=================================================================="

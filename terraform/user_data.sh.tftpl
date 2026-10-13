@@ -1,0 +1,71 @@
+#!/bin/bash
+# ==============================================================================
+# Auto Scaling Group Instance Bootstrap Script (Amazon Linux 2023)
+# Self-Healing & Automated Ansible Deployment for KopDes Merah Putih
+# ==============================================================================
+
+set -euo pipefail
+exec > >(tee -a /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+echo "[INFO] $(date) - Memulai bootstrap instance KopDes Merah Putih di Amazon Linux 2023..."
+
+# 1. Update OS package repository & instal dependencies awal
+dnf clean all
+dnf update -y --releasever=latest
+dnf install -y git python3 python3-pip jq awscli
+
+# 2. Instal Ansible Core untuk otomasi lokal
+pip3 install ansible-core
+
+# 3. Clone repository IaC Automation (Ansible Playbooks & Roles)
+IAC_DIR="/opt/kopdes-iac"
+if [ -d "$IAC_DIR" ]; then
+    rm -rf "$IAC_DIR"
+fi
+echo "[INFO] Mengunduh repository IaC dari ${iac_repo_url}..."
+git clone "${iac_repo_url}" "$IAC_DIR"
+
+# 4. Clone repository KopDes Web Application
+APP_DIR="/var/www/kopdes"
+if [ -d "$APP_DIR" ]; then
+    rm -rf "$APP_DIR"
+fi
+echo "[INFO] Mengunduh repository KopDes Web dari ${git_repo_url}..."
+git clone "${git_repo_url}" "$APP_DIR"
+
+# 5. Ambil kredensial database dari AWS Secrets Manager (jika secret_arn tersedia)
+DB_HOST="${db_host}"
+DB_NAME="${db_name}"
+DB_USER="${db_user}"
+DB_PASS="${db_pass}"
+AWS_REGION="${aws_region}"
+ALB_DNS="${alb_dns}"
+SES_SENDER="${ses_sender}"
+SES_RECIPIENT="${ses_recipient}"
+
+# 6. Jalankan Playbook Ansible secara lokal (Local Connection) dari repo IaC
+echo "[INFO] Menjalankan Ansible Playbook untuk konfigurasi webserver & runtime PHP..."
+ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" \
+  --extra-vars "app_dest_dir=/var/www/kopdes \
+                db_host=$DB_HOST \
+                db_port=3306 \
+                db_name=$DB_NAME \
+                db_user=$DB_USER \
+                db_password=$DB_PASS \
+                alb_dns_name=$ALB_DNS \
+                aws_region=$AWS_REGION \
+                ses_sender_email=$SES_SENDER \
+                ses_recipient_email=$SES_RECIPIENT"
+
+# 7. Jalankan inisialisasi database schema & seed ke Amazon RDS secara idempotent
+echo "[INFO] Menginisialisasi skema & dummy seed ke Amazon RDS ($DB_HOST)..."
+php /var/www/kopdes/database/init.php || true
+
+# 8. Pastikan Nginx dan PHP-FPM aktif dan berjalan
+systemctl daemon-reload
+systemctl enable --now php-fpm
+systemctl enable --now nginx
+systemctl restart php-fpm
+systemctl restart nginx
+
+echo "[OK] $(date) - Bootstrap instance KopDes selesai dengan sukses! Node siap menerima trafik dari ALB."

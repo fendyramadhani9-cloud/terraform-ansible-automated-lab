@@ -1,0 +1,41 @@
+# ==============================================================================
+# KopDes Merah Putih - AWS Native Infrastructure Variables Example
+# Salin file ini menjadi 'terraform.tfvars' untuk kustomisasi deployment
+# ==============================================================================
+
+# AWS Region & Project Identifier
+aws_region   = "ap-southeast-1"
+project_name = "kopdes"
+environment  = "production"
+
+# Network Configuration (VPC 10.0.0.0/16 Multi-AZ)
+vpc_cidr                 = "10.0.0.0/16"
+public_subnet_cidrs      = ["10.0.1.0/24", "10.0.2.0/24"]
+private_app_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24"]
+private_db_subnet_cidrs  = ["10.0.21.0/24", "10.0.22.0/24"]
+
+# Cost-Control Lab Option (1 NAT Gateway vs Multi-AZ NAT Gateway)
+# Set true untuk menghemat biaya (~$32/bulan per NAT GW). Set false untuk redundansi Multi-AZ penuh.
+single_nat_gateway = true
+
+# Compute (EC2 Web Server Tier Auto Scaling Group)
+instance_type        = "t3.micro"
+asg_min_size         = 2
+asg_max_size         = 4
+asg_desired_capacity = 2
+
+# Database (Amazon RDS MySQL)
+db_instance_class     = "db.t4g.micro"
+db_allocated_storage  = 20
+db_multi_az           = false # Set true untuk Multi-AZ failover di production
+db_name               = "kopdes"
+db_username           = "kopdes_admin"
+# db_password         = "GantiPasswordAmanJikaPerlu" # Jika dikosongkan/null, Terraform akan men-generate password otomatis yang aman
+
+# Amazon Simple Email Service (SES)
+ses_sender_email    = "noreply@kopdes.id"
+ses_recipient_email = "admin@kopdes.id"
+ses_enabled         = true
+
+# Opsional S3 Storage (Default false karena aplikasi belum membutuhkan persistent file upload)
+enable_s3_storage = false

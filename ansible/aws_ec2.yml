@@ -1,0 +1,25 @@
+# ==============================================================================
+# Ansible AWS EC2 Dynamic Inventory Plugin Configuration
+# Menggunakan plugin: amazon.aws.aws_ec2
+# Penggunaan: ansible-inventory -i ansible/aws_ec2.yml --graph
+# ==============================================================================
+plugin: amazon.aws.aws_ec2
+regions:
+  - ap-southeast-1
+
+filters:
+  tag:Project: kopdes-merah-putih
+  instance-state-name: running
+
+keyed_groups:
+  - key: tags.Role
+    prefix: role
+  - key: tags.Environment
+    prefix: env
+
+groups:
+  webservers: "'kopdes-web' in tags.Name"
+
+compose:
+  ansible_host: private_ip_address
+  server_node_name: tags.Name

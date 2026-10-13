@@ -1,0 +1,170 @@
+# terraform-automated-lab
+
+Implementasi **Infrastructure as Code (IaC)** dan **Manajemen Konfigurasi Otomatis** untuk Platform Koperasi Desa (**KopDes**) Merah Putih menggunakan **HashiCorp Terraform** dan **Ansible** di **Amazon Web Services (AWS)**.
+
+Repository ini bertugas menyediakan seluruh infrastruktur cloud AWS Native, jaringan, perizinan keamanan, database terkelola, load balancer, serta konfigurasi server web otomatis.
+
+---
+
+## Hubungan Antar Repository
+
+Proyek KopDes Merah Putih menggunakan arsitektur pemisahan *Separation of Concerns*:
+
+1. **Repository IaC (Repository Ini)**:  
+   [`https://github.com/fendyramadhani9-cloud/terraform-automated-lab`](https://github.com/fendyramadhani9-cloud/terraform-automated-lab)  
+   Berisi seluruh kode deklarasi infrastruktur Terraform dan playbook Ansible untuk Amazon Linux 2023.
+
+2. **Repository Web Application**:  
+   [`https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS`](https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS)  
+   Berisi murni kode aplikasi web KopDes (PHP 8, HTML, CSS, JavaScript, SQLite/MySQL schema & seed).  
+   *Repository ini akan otomatis di-clone oleh instance EC2 saat proses bootstrap berjalan.*
+
+---
+
+## Arsitektur AWS Native Target
+
+```mermaid
+flowchart TD
+    subgraph Internet["Public Internet"]
+        Client["Web Browser Warga / Pengurus Desa"]
+    end
+
+    subgraph AWS["AWS Cloud (Region: ap-southeast-1)"]
+        subgraph VPC["Amazon VPC (10.0.0.0/16)"]
+            IGW["Internet Gateway"]
+
+            subgraph PublicSubnets["Public Subnets (AZ-a & AZ-b)"]
+                ALB["Application Load Balancer (ALB)\n[Port 80 / Sticky Sessions]"]
+                NATGW["NAT Gateway\n[Egress Internet untuk Private Subnet]"]
+            end
+
+            subgraph PrivateAppSubnets["Private Application Subnets (AZ-a & AZ-b)"]
+                subgraph ASG["Auto Scaling Group (Min: 2, Desired: 2, Max: 4)"]
+                    EC2_A["EC2 Web Server 01\nAmazon Linux 2023\nNginx + PHP-FPM"]
+                    EC2_B["EC2 Web Server 02\nAmazon Linux 2023\nNginx + PHP-FPM"]
+                end
+            end
+
+            subgraph PrivateDBSubnets["Private Database Subnets (AZ-a & AZ-b)"]
+                RDS["Amazon RDS MySQL\nEngine: 8.0 / db.t4g.micro\nStorage Encrypted (KMS)"]
+            end
+        end
+
+        subgraph AWSServices["AWS Managed Services"]
+            IAM["IAM Instance Profile\n(SES, CloudWatch, SSM)"]
+            CW["Amazon CloudWatch\nLog Group: /aws/ec2/kopdes-app"]
+            SEC["AWS Secrets Manager\n(Kredensial RDS)"]
+            SES["Amazon Simple Email Service (SES)\n(Email Notifikasi Laporan)"]
+        end
+    end
+
+    Client -->|"HTTP (Port 80)"| IGW
+    IGW --> ALB
+    ALB -->|"Target Group (Port 80 / Sticky Cookie)"| EC2_A
+    ALB -->|"Target Group (Port 80 / Sticky Cookie)"| EC2_B
+
+    EC2_A -->|"Egress Internet"| NATGW
+    EC2_B -->|"Egress Internet"| NATGW
+    NATGW --> IGW
+
+    EC2_A -->|"MySQL (Port 3306)"| RDS
+    EC2_B -->|"MySQL (Port 3306)"| RDS
+
+    EC2_A -.->|"IAM Role Auth"| SES
+    EC2_B -.->|"IAM Role Auth"| SES
+    EC2_A -.->|"Logs"| CW
+    EC2_B -.->|"Logs"| CW
+    EC2_A -.->|"DB Secret Fetch"| SEC
+    EC2_B -.->|"DB Secret Fetch"| SEC
+```
+
+---
+
+## Komponen Infrastruktur
+
+| Resource | Deskripsi & Konfigurasi |
+| :--- | :--- |
+| **VPC & Subnets** | CIDR `10.0.0.0/16` membentang di 2 AZ dengan 2 Public Subnet, 2 Private App Subnet, dan 2 Private DB Subnet. |
+| **NAT Gateway** | 1 NAT Gateway di Public Subnet AZ-a (efisiensi biaya lab) dengan rute egress untuk private subnet. |
+| **Security Groups** | ALB SG (Port 80) $\rightarrow$ EC2 SG (Port 80 dari ALB) $\rightarrow$ RDS SG (Port 3306 dari EC2). |
+| **Load Balancer** | Application Load Balancer dengan Target Group `/index.php?page=login` dan stickiness `lb_cookie` 86400 detik. |
+| **Compute (ASG)** | Launch Template Amazon Linux 2023, instance type `t3.micro` / `t4g.micro`, kapasitas 2 s.d. 4 instance. |
+| **Database (RDS)** | Amazon RDS MySQL 8.0 (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default (siap multi-AZ). |
+| **Secrets Manager** | Menyimpan password master database secara acak tanpa hardcoded string di source code. |
+| **IAM Profile** | Memberikan izin `ses:SendEmail`, CloudWatch Logs, dan AWS Systems Manager ke EC2 tanpa static key. |
+
+---
+
+## Alur Self-Healing & Bootstrap Instance
+
+Setiap instance baru yang diluncurkan oleh Auto Scaling Group menjalankan skrip `terraform/user_data.sh.tftpl`:
+1. Menginstal dependensi OS: `git`, `python3`, `pip`, `jq`, `awscli`.
+2. Menginstal `ansible-core`.
+3. Meng-clone repository IaC ini ke `/opt/kopdes-iac`.
+4. Meng-clone repository Web App (`kopdes-iac-automationAWS`) ke `/var/www/kopdes`.
+5. Menjalankan playbook Ansible secara lokal:
+   ```bash
+   ansible-playbook -i "localhost," -c local /opt/kopdes-iac/ansible/playbook_app.yml ...
+   ```
+6. Mengonfigurasi Nginx, PHP-FPM, template `.env`, dan menginisialisasi skema tabel & seed ke RDS via `database/init.php`.
+
+---
+
+## Struktur Direktori Repository
+
+```text
+terraform-automated-lab/
+|-- terraform/                         # Deklarasi Infrastruktur Cloud (AWS)
+|   |-- versions.tf                    # Provider AWS (~> 5.0) dan Random (~> 3.6)
+|   |-- variables.tf                   # Definisi variabel VPC, ASG, RDS, SES, Repo URLs
+|   |-- terraform.tfvars.example       # Template variabel deployment
+|   |-- terraform.tfvars               # Nilai variabel aktif
+|   |-- main.tf                        # Resource VPC, ALB, ASG, RDS, IAM, Secrets Manager
+|   |-- outputs.tf                     # Output aman (alb_dns_name, rds_endpoint, vpc_id, asg_name)
+|   `-- user_data.sh.tftpl             # Script bootstrap cloud-init EC2 (Ansible runner)
+|
+|-- ansible/                           # Manajemen Konfigurasi (Amazon Linux 2023)
+|   |-- ansible.cfg                    # Konfigurasi interpreter & user ec2-user
+|   |-- inventory.ini                  # Template inventory host EC2
+|   |-- generate_inventory_aws.sh      # Skrip dinamis query EC2 via AWS CLI
+|   |-- aws_ec2.yml                    # Plugin konfigurasi dynamic inventory AWS
+|   |-- group_vars/
+|   |   `-- all.yml                    # Variabel konfigurasi AWS, RDS, ALB, SES
+|   |-- playbook_app.yml               # Playbook bootstrap mandiri untuk user_data ASG
+|   |-- site.yml                       # Master playbook multi-node orchestration
+|   `-- roles/
+|       |-- common/                    # Baseline AL2023 (dnf update, chrony, curl)
+|       |-- webserver/                 # Nginx, PHP-FPM, virtual host, deployment kode
+|       `-- database/                  # Inisialisasi schema & seed ke Amazon RDS
+|
+|-- TUTORIAL.md                        # Panduan deployment lengkap langkah-demi-langkah
+|-- .gitignore                         # Mengabaikan file state dan cache terraform
+`-- README.md                          # Dokumentasi arsitektur IaC (file ini)
+```
+
+---
+
+## Panduan Menjalankan
+
+### 1. Prasyarat
+- AWS CLI terkonfigurasi dengan profil Administrator:
+  ```bash
+  aws sts get-caller-identity
+  ```
+- Terraform v1.5.0 atau lebih baru terpasang.
+
+### 2. Deployment Terraform
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan
+terraform apply
+```
+
+### 3. Pembersihan Resource (Teardown)
+Untuk menghapus seluruh resource agar tidak menimbulkan biaya berkelanjutan:
+```bash
+cd terraform
+terraform destroy
+```

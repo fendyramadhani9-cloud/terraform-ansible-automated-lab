@@ -1,0 +1,33 @@
+# ==============================================================================
+# ANSIBLE GLOBAL VARIABLES: KOPDES AWS NATIVE AUTOMATION
+# Target Environment: Amazon Linux 2023 (AL2023) & Amazon RDS MySQL
+# ==============================================================================
+
+# Application & Identity
+app_name: "KopDes Merah Putih"
+app_dest_dir: "/var/www/kopdes"
+app_user: "nginx"
+app_group: "nginx"
+app_env: "production"
+app_debug: false
+
+# Database Layer (Amazon RDS MySQL)
+# Nilai ini dioper secara dinamis via Terraform / AWS Secrets Manager / extra-vars
+db_host: "{{ db_host | default('127.0.0.1') }}"
+db_port: 3306
+db_name: "{{ db_name | default('kopdes') }}"
+db_user: "{{ db_user | default('kopdes_admin') }}"
+db_password: "{{ db_password | default('') }}"
+
+# Entry Point (Application Load Balancer)
+alb_dns_name: "{{ alb_dns_name | default('') }}"
+server_node_name: "{{ server_node_name | default(ansible_hostname | default('WEB-ASG')) }}"
+
+# Amazon Simple Email Service (SES)
+aws_region: "{{ aws_region | default('ap-southeast-1') }}"
+ses_enabled: true
+ses_sender_email: "{{ ses_sender_email | default('noreply@kopdes.id') }}"
+ses_recipient_email: "{{ ses_recipient_email | default('admin@kopdes.id') }}"
+
+# System & Timezone
+timezone: "Asia/Jakarta"

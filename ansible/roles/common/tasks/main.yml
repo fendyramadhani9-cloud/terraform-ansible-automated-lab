@@ -1,0 +1,35 @@
+---
+# ==============================================================================
+# Role: Common (Baseline Amazon Linux 2023 Configuration)
+# ==============================================================================
+
+- name: Perbarui package cache dan pasang utilitas dasar sistem
+  ansible.builtin.dnf:
+    name:
+      - curl
+      - git
+      - jq
+      - tar
+      - unzip
+      - ca-certificates
+      - policycoreutils
+    state: present
+    update_cache: yes
+  when: ansible_os_family == 'RedHat'
+
+- name: Pastikan zona waktu disetel ke Asia/Jakarta
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ timezone | default('Asia/Jakarta') }}"
+    dest: /etc/localtime
+    state: link
+    force: yes
+  failed_when: false
+
+- name: Pastikan direktori log KopDes dan direktori aplikasi tersedia
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "/var/log/kopdes"
+    - "{{ app_dest_dir }}"

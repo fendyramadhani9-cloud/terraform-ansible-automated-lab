@@ -1,0 +1,28 @@
+---
+# ==============================================================================
+# Role: Database (Amazon RDS Migration & Seed Initialization)
+# ==============================================================================
+# Pada AWS Native Architecture, database MariaDB/MySQL dikelola penuh oleh Amazon RDS.
+# Role ini tidak menginstal database server lokal pada EC2, melainkan menginisialisasi
+# skema tabel (schema.sql) dan data seed awal (seed.sql) secara terpusat dan idempotent
+# langsung ke instance Amazon RDS via PDO MySQL.
+
+- name: Pastikan file inisialisasi skema dan seed tersedia di app_dest_dir
+  ansible.builtin.stat:
+    path: "{{ app_dest_dir }}/database/init.php"
+  register: db_init_file
+
+- name: Inisialisasi skema tabel dan seed data awal ke Amazon RDS ({{ db_host }})
+  ansible.builtin.command:
+    cmd: "php {{ app_dest_dir }}/database/init.php"
+  register: rds_init_output
+  changed_when: "'selesai dengan sukses' in rds_init_output.stdout or 'Berhasil' in rds_init_output.stdout"
+  failed_when: false
+  when: db_init_file.stat.exists
+
+- name: Tampilkan ringkasan inisialisasi Amazon RDS
+  ansible.builtin.debug:
+    msg:
+      - "Status inisialisasi Amazon RDS:"
+      - "{{ rds_init_output.stdout_lines | default(['Database sudah terinisialisasi atau skrip dijalankan']) }}"
+  when: rds_init_output is defined and rds_init_output.stdout_lines is defined

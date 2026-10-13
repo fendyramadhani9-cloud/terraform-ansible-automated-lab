@@ -1,0 +1,5 @@
+---
+# Handlers for database role (Amazon RDS is managed by AWS)
+- name: Restart MariaDB
+  ansible.builtin.debug:
+    msg: "Amazon RDS adalah database terkelola AWS; restart instance dilakukan melalui AWS Management Console atau Terraform."

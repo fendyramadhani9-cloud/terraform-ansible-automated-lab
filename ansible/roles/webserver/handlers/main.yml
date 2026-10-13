@@ -1,0 +1,19 @@
+---
+# ==============================================================================
+# Webserver Service Handlers (Amazon Linux 2023 / systemd)
+# ==============================================================================
+
+- name: Restart php-fpm
+  ansible.builtin.service:
+    name: php-fpm
+    state: restarted
+
+- name: Restart nginx
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+
+- name: Restart KopDesWeb
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
