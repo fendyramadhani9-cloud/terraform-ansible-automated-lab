@@ -337,10 +337,12 @@ resource "aws_db_instance" "rds" {
 }
 
 # ------------------------------------------------------------------------------
-# IAM Role & Instance Profile untuk EC2 (Least Privilege)
+# IAM Role & Instance Profile untuk EC2 (Least Privilege / AWS Academy Mode)
+# Di AWS Academy: Menggunakan LabInstanceProfile bawaan tanpa membuat IAM role baru
 # ------------------------------------------------------------------------------
 resource "aws_iam_role" "ec2_role" {
-  name = "${var.project_name}-ec2-role"
+  count = var.use_aws_academy ? 0 : 1
+  name  = "${var.project_name}-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -360,10 +362,11 @@ resource "aws_iam_role" "ec2_role" {
   }
 }
 
-# Kebijakan izin Amazon SES, CloudWatch Logs, dan Secrets Manager
+# Kebijakan izin Amazon SES dan Secrets Manager
 resource "aws_iam_policy" "ec2_policy" {
+  count       = var.use_aws_academy ? 0 : 1
   name        = "${var.project_name}-ec2-least-privilege-policy"
-  description = "Izin least privilege untuk SES send-email, CloudWatch logging, dan Secrets Manager read"
+  description = "Izin least privilege untuk SES send-email dan Secrets Manager read"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -392,19 +395,22 @@ resource "aws_iam_policy" "ec2_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_custom_attach" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = aws_iam_policy.ec2_policy.arn
+  count      = var.use_aws_academy ? 0 : 1
+  role       = aws_iam_role.ec2_role[0].name
+  policy_arn = aws_iam_policy.ec2_policy[0].arn
 }
 
 # Amazon SSM Managed Instance Core: Memungkinkan akses console/terminal via AWS Systems Manager
 resource "aws_iam_role_policy_attachment" "ssm_attach" {
-  role       = aws_iam_role.ec2_role.name
+  count      = var.use_aws_academy ? 0 : 1
+  role       = aws_iam_role.ec2_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "${var.project_name}-ec2-instance-profile"
-  role = aws_iam_role.ec2_role.name
+  count = var.use_aws_academy ? 0 : 1
+  name  = "${var.project_name}-ec2-instance-profile"
+  role  = aws_iam_role.ec2_role[0].name
 }
 
 # ------------------------------------------------------------------------------
@@ -429,6 +435,25 @@ resource "aws_s3_bucket_public_access_block" "app_storage" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+# ------------------------------------------------------------------------------
+# Amazon SNS Topic (Email Notification Support untuk AWS Academy & SES Fallback)
+# ------------------------------------------------------------------------------
+resource "aws_sns_topic" "reports" {
+  name = "${var.project_name}-economic-reports-topic"
+
+  tags = {
+    Name = "${var.project_name}-sns-reports"
+  }
+}
+
+resource "aws_sns_topic_subscription" "email_sub" {
+  count     = var.ses_recipient_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.reports.arn
+  protocol  = "email"
+  endpoint  = var.ses_recipient_email
+}
+
 
 # ------------------------------------------------------------------------------
 # Application Load Balancer (ALB)
@@ -498,7 +523,7 @@ resource "aws_launch_template" "app_lt" {
   instance_type = var.instance_type
 
   iam_instance_profile {
-    arn = aws_iam_instance_profile.ec2_profile.arn
+    name = var.use_aws_academy ? var.academy_instance_profile_name : aws_iam_instance_profile.ec2_profile[0].name
   }
 
   network_interfaces {
@@ -525,6 +550,7 @@ resource "aws_launch_template" "app_lt" {
     alb_dns       = aws_lb.alb.dns_name
     ses_sender    = var.ses_sender_email
     ses_recipient = var.ses_recipient_email
+    sns_topic_arn = aws_sns_topic.reports.arn
   }))
 
   tag_specifications {

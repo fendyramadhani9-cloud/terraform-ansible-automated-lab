@@ -21,6 +21,21 @@ variable "environment" {
 }
 
 # ------------------------------------------------------------------------------
+# AWS Academy Compatibility Mode
+# ------------------------------------------------------------------------------
+variable "use_aws_academy" {
+  description = "Set true jika menjalankan di AWS Academy Learner Lab (menggunakan LabInstanceProfile bawaan tanpa membuat IAM role baru)"
+  type        = bool
+  default     = true
+}
+
+variable "academy_instance_profile_name" {
+  description = "Nama IAM instance profile bawaan di AWS Academy Learner Lab"
+  type        = string
+  default     = "LabInstanceProfile"
+}
+
+# ------------------------------------------------------------------------------
 # Networking (VPC & Subnets Multi-AZ)
 # ------------------------------------------------------------------------------
 variable "vpc_cidr" {

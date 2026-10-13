@@ -43,6 +43,11 @@ output "s3_bucket_name" {
   value       = var.enable_s3_storage ? aws_s3_bucket.app_storage[0].bucket : "S3 Storage disabled (var.enable_s3_storage = false)"
 }
 
+output "sns_topic_arn" {
+  description = "ARN SNS Topic untuk notifikasi laporan ekonomi (didukung penuh di AWS Academy)"
+  value       = aws_sns_topic.reports.arn
+}
+
 output "deployment_instructions" {
   description = "Panduan pengujian dan verifikasi akses aplikasi"
   value       = <<EOT

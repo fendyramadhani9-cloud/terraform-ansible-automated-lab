@@ -42,6 +42,7 @@ AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
 SES_SENDER="${ses_sender}"
 SES_RECIPIENT="${ses_recipient}"
+SNS_TOPIC_ARN="${sns_topic_arn}"
 
 # 6. Jalankan Playbook Ansible secara lokal (Local Connection) dari repo IaC
 echo "[INFO] Menjalankan Ansible Playbook untuk konfigurasi webserver & runtime PHP..."
@@ -55,7 +56,8 @@ ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" \
                 alb_dns_name=$ALB_DNS \
                 aws_region=$AWS_REGION \
                 ses_sender_email=$SES_SENDER \
-                ses_recipient_email=$SES_RECIPIENT"
+                ses_recipient_email=$SES_RECIPIENT \
+                sns_topic_arn=$SNS_TOPIC_ARN"
 
 # 7. Jalankan inisialisasi database schema & seed ke Amazon RDS secara idempotent
 echo "[INFO] Menginisialisasi skema & dummy seed ke Amazon RDS ($DB_HOST)..."

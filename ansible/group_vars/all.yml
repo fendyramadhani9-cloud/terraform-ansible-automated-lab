@@ -28,6 +28,7 @@ aws_region: "{{ aws_region | default('us-east-1') }}"
 ses_enabled: true
 ses_sender_email: "{{ ses_sender_email | default('noreply@kopdes.id') }}"
 ses_recipient_email: "{{ ses_recipient_email | default('admin@kopdes.id') }}"
+sns_topic_arn: "{{ sns_topic_arn | default('') }}"
 
 # System & Timezone
 timezone: "Asia/Jakarta"
