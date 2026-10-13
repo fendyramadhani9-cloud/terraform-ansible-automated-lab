@@ -33,3 +33,7 @@ ses_enabled         = true
 
 # S3
 enable_s3_storage = false
+
+# Git Repositories
+git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
+iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-automated-lab.git"

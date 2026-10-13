@@ -39,3 +39,7 @@ ses_enabled         = true
 
 # Opsional S3 Storage (Default false karena aplikasi belum membutuhkan persistent file upload)
 enable_s3_storage = false
+
+# Git Repositories
+git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
+iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-automated-lab.git"
