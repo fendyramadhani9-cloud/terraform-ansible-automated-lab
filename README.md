@@ -51,8 +51,7 @@ flowchart TD
         end
 
         subgraph AWSServices["AWS Managed Services"]
-            IAM["IAM Instance Profile\n(SES, CloudWatch, SSM)"]
-            CW["Amazon CloudWatch\nLog Group: /aws/ec2/kopdes-app"]
+            IAM["IAM Instance Profile\n(SES, SSM)"]
             SEC["AWS Secrets Manager\n(Kredensial RDS)"]
             SES["Amazon Simple Email Service (SES)\n(Email Notifikasi Laporan)"]
         end
@@ -72,8 +71,6 @@ flowchart TD
 
     EC2_A -.->|"IAM Role Auth"| SES
     EC2_B -.->|"IAM Role Auth"| SES
-    EC2_A -.->|"Logs"| CW
-    EC2_B -.->|"Logs"| CW
     EC2_A -.->|"DB Secret Fetch"| SEC
     EC2_B -.->|"DB Secret Fetch"| SEC
 ```
@@ -91,7 +88,7 @@ flowchart TD
 | **Compute (ASG)** | Launch Template Amazon Linux 2023, instance type `t3.micro` / `t4g.micro`, kapasitas 2 s.d. 4 instance. |
 | **Database (RDS)** | Amazon RDS MySQL 8.0 (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default (siap multi-AZ). |
 | **Secrets Manager** | Menyimpan password master database secara acak tanpa hardcoded string di source code. |
-| **IAM Profile** | Memberikan izin `ses:SendEmail`, CloudWatch Logs, dan AWS Systems Manager ke EC2 tanpa static key. |
+| **IAM Profile** | Memberikan izin `ses:SendEmail` dan AWS Systems Manager ke EC2 tanpa static key. |
 
 ---
 

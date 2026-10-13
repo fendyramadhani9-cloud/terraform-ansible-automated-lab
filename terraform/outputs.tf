@@ -38,11 +38,6 @@ output "secrets_manager_secret_arn" {
   value       = aws_secretsmanager_secret.db_credentials.arn
 }
 
-output "cloudwatch_log_group" {
-  description = "Nama CloudWatch Log Group untuk monitoring aplikasi"
-  value       = aws_cloudwatch_log_group.app_logs.name
-}
-
 output "s3_bucket_name" {
   description = "Nama S3 Bucket penyimpanan (jika diaktifkan)"
   value       = var.enable_s3_storage ? aws_s3_bucket.app_storage[0].bucket : "S3 Storage disabled (var.enable_s3_storage = false)"
@@ -67,7 +62,6 @@ KOPDES MERAH PUTIH - AWS NATIVE INFRASTRUCTURE DEPLOYED!
 
 4. Monitoring & Auto Scaling:
    - Cek Target Group Health di AWS Console (EC2 -> Target Groups -> ${aws_lb_target_group.alb_tg.name}).
-   - Log instance tersedia di CloudWatch: ${aws_cloudwatch_log_group.app_logs.name}
 ================================================================================
 EOT
 }

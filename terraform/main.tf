@@ -1,6 +1,6 @@
 # ==============================================================================
 # KopDes Merah Putih - AWS Native Infrastructure
-# Terraform Configuration: VPC, Multi-AZ Subnets, ALB, ASG, RDS, IAM, CloudWatch
+# Terraform Configuration: VPC, Multi-AZ Subnets, ALB, ASG, RDS, IAM
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -378,19 +378,7 @@ resource "aws_iam_policy" "ec2_policy" {
         ]
         Resource = "*"
       },
-      # 2. CloudWatch Logs: Logging aplikasi & web server
-      {
-        Sid    = "AllowCloudWatchLogs"
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogStreams"
-        ]
-        Resource = "arn:aws:logs:*:*:log-group:/aws/ec2/${var.project_name}-*"
-      },
-      # 3. AWS Secrets Manager: Baca kredensial DB
+      # 2. AWS Secrets Manager: Baca kredensial DB
       {
         Sid    = "AllowSecretsManagerRead"
         Effect = "Allow"
@@ -420,16 +408,8 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 }
 
 # ------------------------------------------------------------------------------
-# CloudWatch Logs & Opsional S3 Storage
+# Opsional S3 Storage (Jika Diaktifkan)
 # ------------------------------------------------------------------------------
-resource "aws_cloudwatch_log_group" "app_logs" {
-  name              = "/aws/ec2/${var.project_name}-app"
-  retention_in_days = 14
-
-  tags = {
-    Name = "${var.project_name}-cloudwatch-logs"
-  }
-}
 
 resource "aws_s3_bucket" "app_storage" {
   count         = var.enable_s3_storage ? 1 : 0

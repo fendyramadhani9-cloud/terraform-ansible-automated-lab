@@ -156,7 +156,7 @@ Periksa kembali daftar resource yang akan dibuat:
 - 1 VPC + 1 Internet Gateway + 1 NAT Gateway + 6 Subnet (2 Public, 2 Private App, 2 Private DB)
 - 3 Security Groups (ALB, EC2, RDS)
 - 1 RDS Instance MySQL + 1 DB Subnet Group + 1 AWS Secrets Manager Secret
-- 1 IAM Role + Instance Profile (SES + CloudWatch Logs + SSM)
+- 1 IAM Role + Instance Profile (SES + SSM)
 - 1 Application Load Balancer + 1 Target Group + 1 HTTP Listener
 - 1 Launch Template + 1 Auto Scaling Group
 
@@ -296,4 +296,4 @@ cd terraform
 terraform destroy
 ```
 
-Ketik `yes` saat konfirmasi diminta. Seluruh resource (VPC, NAT Gateway, ALB, ASG, EC2, RDS, Secrets Manager, dan CloudWatch Log Group) akan dihapus secara bersih sehingga tagihan AWS berhenti berjalan.
+Ketik `yes` saat konfirmasi diminta. Seluruh resource (VPC, NAT Gateway, ALB, ASG, EC2, RDS, dan Secrets Manager) akan dihapus secara bersih sehingga tagihan AWS berhenti berjalan.
