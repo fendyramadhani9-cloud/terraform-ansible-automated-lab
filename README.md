@@ -29,7 +29,7 @@ flowchart TD
         Client["Web Browser Warga / Pengurus Desa"]
     end
 
-    subgraph AWS["AWS Cloud (Region: ap-southeast-1)"]
+    subgraph AWS["AWS Cloud (Region: us-east-1)"]
         subgraph VPC["Amazon VPC (10.0.0.0/16)"]
             IGW["Internet Gateway"]
 

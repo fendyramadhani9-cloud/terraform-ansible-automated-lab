@@ -2,7 +2,7 @@
 # KopDes Merah Putih - AWS Native Infrastructure Variables
 # ==============================================================================
 
-aws_region   = "ap-southeast-1"
+aws_region   = "us-east-1"
 project_name = "kopdes"
 environment  = "production"
 

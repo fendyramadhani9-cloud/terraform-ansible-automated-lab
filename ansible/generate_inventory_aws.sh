@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-REGION="${AWS_REGION:-ap-southeast-1}"
+REGION="${AWS_REGION:-us-east-1}"
 PROJECT_TAG="${PROJECT_NAME:-kopdes-merah-putih}"
 OUTPUT_FILE="$(dirname "$0")/inventory.ini"
 

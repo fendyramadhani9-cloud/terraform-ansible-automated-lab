@@ -5,7 +5,7 @@
 variable "aws_region" {
   description = "AWS Region target tempat infrastruktur KopDes di-deploy"
   type        = string
-  default     = "ap-southeast-1" # Singapore (low latency ke Indonesia)
+  default     = "us-east-1" # US East (N. Virginia)
 }
 
 variable "project_name" {

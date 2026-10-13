@@ -43,14 +43,14 @@ aws configure
 # Opsi 2: Menggunakan Environment Variables
 export AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxxxx"
 export AWS_SECRET_ACCESS_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-export AWS_DEFAULT_REGION="ap-southeast-1"
+export AWS_DEFAULT_REGION="us-east-1"
 
 # Verifikasi identitas caller
 aws sts get-caller-identity
 ```
 
 ### B. Membuat EC2 Key Pair (Opsional untuk SSH Debugging)
-Buat EC2 Key Pair di region target (`ap-southeast-1`):
+Buat EC2 Key Pair di region target (`us-east-1`):
 
 ```bash
 aws ec2 create-key-pair \
@@ -73,10 +73,10 @@ Secara default, akun AWS baru berada dalam mode **SES Sandbox**. Pada mode ini:
 
 ```bash
 # Verifikasi email pengirim (misal: noreply@kopdes.id atau email Anda)
-aws ses verify-email-identity --email-address noreply@kopdes.id --region ap-southeast-1
+aws ses verify-email-identity --email-address noreply@kopdes.id --region us-east-1
 
 # Verifikasi email penerima laporan (misal: admin@kopdes.id atau email Anda)
-aws ses verify-email-identity --email-address admin@kopdes.id --region ap-southeast-1
+aws ses verify-email-identity --email-address admin@kopdes.id --region us-east-1
 ```
 
 > [!NOTE]
@@ -96,7 +96,7 @@ cp terraform.tfvars.example terraform.tfvars
 Edit file `terraform/terraform.tfvars` dan sesuaikan parameter berikut:
 
 ```hcl
-aws_region   = "ap-southeast-1"
+aws_region   = "us-east-1"
 project_name = "kopdes-merah-putih"
 environment  = "lab"
 
@@ -174,9 +174,9 @@ Setelah selesai (~8-12 menit untuk pembuatan RDS), Terraform akan mencetak outpu
 Apply complete! Resources: 38 added, 0 changed, 0 destroyed.
 
 Outputs:
-alb_dns_name = "kopdes-alb-123456789.ap-southeast-1.elb.amazonaws.com"
+alb_dns_name = "kopdes-alb-123456789.us-east-1.elb.amazonaws.com"
 asg_name = "kopdes-merah-putih-web-asg"
-rds_endpoint = "kopdes-merah-putih-rds.c3xxxxxx.ap-southeast-1.rds.amazonaws.com:3306"
+rds_endpoint = "kopdes-merah-putih-rds.c3xxxxxx.us-east-1.rds.amazonaws.com:3306"
 vpc_id = "vpc-0abc123456789def0"
 ```
 
@@ -249,14 +249,14 @@ Di AWS Console (EC2 > Target Groups) atau via AWS CLI:
 ```bash
 aws elbv2 describe-target-health \
   --target-group-arn <TARGET_GROUP_ARN> \
-  --region ap-southeast-1
+  --region us-east-1
 ```
 Pastikan kedua target berada dalam kondisi **healthy** (HTTP 200 pada `/index.php?page=login`).
 
 ### B. Simulasi Kegagalan Instance (Self-Healing Test)
 1. Matikan (terminate) salah satu instance EC2 yang sedang berjalan di ASG:
    ```bash
-   aws ec2 terminate-instances --instance-ids <INSTANCE_ID> --region ap-southeast-1
+   aws ec2 terminate-instances --instance-ids <INSTANCE_ID> --region us-east-1
    ```
 2. Amati Application Load Balancer:
    - ALB mendeteksi instance yang mati dan menghentikan rute trafik ke instance tersebut tanpa *downtime* bagi pengguna.
