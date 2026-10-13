@@ -62,8 +62,8 @@ KOPDES MERAH PUTIH - AWS NATIVE INFRASTRUCTURE DEPLOYED!
    - MANAGER  : manager@gov.local / password123
    - CITIZEN  : citizen@gov.local / password123
 
-3. Pengujian SES Report Email:
-   Masuk sebagai HEAD_GOV -> Menu Laporan -> Klik tombol "Kirim via Email (SES)".
+3. Pengujian Report Notifikasi via Amazon SNS:
+   Masuk sebagai HEAD_GOV -> Menu Laporan -> Klik tombol "Kirim via Email (SNS)".
 
 4. Monitoring & Auto Scaling:
    - Cek Target Group Health di AWS Console (EC2 -> Target Groups -> ${aws_lb_target_group.alb_tg.name}).

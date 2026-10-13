@@ -29,14 +29,12 @@ db_multi_az          = false
 db_name              = "kopdes"
 db_username          = "kopdes_admin"
 
-# Amazon SES
-ses_sender_email    = "noreply@kopdes.id"
-ses_recipient_email = "admin@kopdes.id"
-ses_enabled         = true
+# Notifikasi Laporan via Amazon SNS (100% AWS Academy Ready)
+sns_recipient_email = "admin@kopdes.id"
 
 # S3
 enable_s3_storage = false
 
 # Git Repositories
 git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
-iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-automated-lab.git"
+iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git"

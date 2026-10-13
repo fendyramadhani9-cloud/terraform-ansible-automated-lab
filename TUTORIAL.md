@@ -279,11 +279,12 @@ Pastikan kedua target berada dalam kondisi **healthy** (HTTP 200 pada `/index.ph
 
 1. Login sebagai Kepala Wilayah: `head@gov.local` / `password123`.
 2. Buka menu **Laporan Ekonomi** (`pages/headgov/reports.php`).
-3. Pada kartu laporan atau tombol tindakan, klik **"Kirim via Email (SES)"**.
+3. Pada kartu laporan atau tombol tindakan, klik **"Kirim via Email (SNS)"**.
 4. Sistem akan:
-   - Memanggil `includes/ses_mailer.php`.
+   - Memanggil `includes/ses_mailer.php` (didukung alias `SnsMailer` / `NotificationService`).
    - Mengambil kredensial dinamis dari IAM Instance Profile via IMDSv2.
-   - Mengirimkan email ringkasan omzet, surplus usaha, dan transaksi aktif ke `ses_recipient_email` (menggunakan Amazon SES, atau otomatis dialihkan ke Amazon SNS jika berjalan di AWS Academy).
+   - Mempublikasikan email ringkasan omzet, surplus usaha, dan transaksi aktif ke topik Amazon SNS (`kopdes-economic-reports-topic`).
+   - Amazon SNS langsung mendistribusikan email laporan ke `sns_recipient_email`.
    - Menampilkan notifikasi sukses di antarmuka web.
 5. Buka kotak masuk email tujuan untuk melihat format laporan yang diterima.
 

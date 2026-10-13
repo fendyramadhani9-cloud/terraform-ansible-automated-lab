@@ -36,14 +36,12 @@ db_name               = "kopdes"
 db_username           = "kopdes_admin"
 # db_password         = "GantiPasswordAmanJikaPerlu" # Jika dikosongkan/null, Terraform akan men-generate password otomatis yang aman
 
-# Amazon Simple Email Service (SES)
-ses_sender_email    = "noreply@kopdes.id"
-ses_recipient_email = "admin@kopdes.id"
-ses_enabled         = true
+# Notifikasi Laporan via Amazon Simple Notification Service (SNS) - 100% AWS Academy Ready
+sns_recipient_email = "admin@kopdes.id"
 
 # Opsional S3 Storage (Default false karena aplikasi belum membutuhkan persistent file upload)
 enable_s3_storage = false
 
 # Git Repositories
 git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
-iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-automated-lab.git"
+iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git"

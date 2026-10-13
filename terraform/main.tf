@@ -31,6 +31,7 @@ data "aws_ami" "al2023" {
 locals {
   azs               = slice(data.aws_availability_zones.available.names, 0, 2)
   db_password_final = var.db_password != null ? var.db_password : random_password.rds_password[0].result
+  sns_recipient     = var.sns_recipient_email != "" ? var.sns_recipient_email : var.ses_recipient_email
 }
 
 # Generate random secure password jika password tidak diisi secara eksplisit
@@ -448,10 +449,10 @@ resource "aws_sns_topic" "reports" {
 }
 
 resource "aws_sns_topic_subscription" "email_sub" {
-  count     = var.ses_recipient_email != "" ? 1 : 0
+  count     = local.sns_recipient != "" ? 1 : 0
   topic_arn = aws_sns_topic.reports.arn
   protocol  = "email"
-  endpoint  = var.ses_recipient_email
+  endpoint  = local.sns_recipient
 }
 
 
@@ -549,7 +550,8 @@ resource "aws_launch_template" "app_lt" {
     aws_region    = var.aws_region
     alb_dns       = aws_lb.alb.dns_name
     ses_sender    = var.ses_sender_email
-    ses_recipient = var.ses_recipient_email
+    ses_recipient = local.sns_recipient
+    sns_recipient = local.sns_recipient
     sns_topic_arn = aws_sns_topic.reports.arn
   }))
 

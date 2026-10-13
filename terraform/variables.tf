@@ -104,7 +104,7 @@ variable "git_repo_url" {
 variable "iac_repo_url" {
   description = "URL git repository IaC Automation (Terraform & Ansible) untuk di-clone oleh EC2 saat bootstrap"
   type        = string
-  default     = "https://github.com/fendyramadhani9-cloud/terraform-automated-lab.git"
+  default     = "https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git"
 }
 
 # ------------------------------------------------------------------------------
@@ -148,22 +148,28 @@ variable "db_password" {
 }
 
 # ------------------------------------------------------------------------------
-# Amazon Simple Email Service (SES) & Opsional Storage
+# Amazon Simple Notification Service (SNS) & Notifikasi Laporan
 # ------------------------------------------------------------------------------
-variable "ses_sender_email" {
-  description = "Alamat email pengirim laporan rekapitulasi KopDes di Amazon SES (Wajib diverifikasi di SES Console)"
-  type        = string
-  default     = "noreply@kopdes.id"
-}
-
-variable "ses_recipient_email" {
-  description = "Alamat email penerima laporan rekapitulasi ekonomi"
+variable "sns_recipient_email" {
+  description = "Alamat email penerima langganan notifikasi laporan rekapitulasi ekonomi via Amazon SNS (100% AWS Academy Ready)"
   type        = string
   default     = "admin@kopdes.id"
 }
 
+variable "ses_recipient_email" {
+  description = "Alias fallback kompatibilitas untuk penerima notifikasi"
+  type        = string
+  default     = ""
+}
+
+variable "ses_sender_email" {
+  description = "Alias fallback kompatibilitas pengirim"
+  type        = string
+  default     = "noreply@kopdes.id"
+}
+
 variable "ses_enabled" {
-  description = "Aktifkan pengiriman email otomatis via Amazon SES"
+  description = "Flag kompatibilitas"
   type        = bool
   default     = true
 }

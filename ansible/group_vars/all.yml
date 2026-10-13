@@ -23,12 +23,11 @@ db_password: "{{ db_password | default('') }}"
 alb_dns_name: "{{ alb_dns_name | default('') }}"
 server_node_name: "{{ server_node_name | default(ansible_hostname | default('WEB-ASG')) }}"
 
-# Amazon Simple Email Service (SES)
+# Amazon Simple Notification Service (SNS) - 100% AWS Academy Ready
 aws_region: "{{ aws_region | default('us-east-1') }}"
-ses_enabled: true
-ses_sender_email: "{{ ses_sender_email | default('noreply@kopdes.id') }}"
-ses_recipient_email: "{{ ses_recipient_email | default('admin@kopdes.id') }}"
 sns_topic_arn: "{{ sns_topic_arn | default('') }}"
+sns_recipient_email: "{{ sns_recipient_email | default(ses_recipient_email | default('admin@kopdes.id')) }}"
+
 
 # System & Timezone
 timezone: "Asia/Jakarta"

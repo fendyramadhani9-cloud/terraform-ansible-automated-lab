@@ -1,4 +1,4 @@
-# terraform-automated-lab
+# terraform-ansible-automated-lab
 
 Implementasi **Infrastructure as Code (IaC)** dan **Manajemen Konfigurasi Otomatis** untuk Platform Koperasi Desa (**KopDes**) Merah Putih menggunakan **HashiCorp Terraform** dan **Ansible** di **Amazon Web Services (AWS)**.
 
@@ -11,7 +11,7 @@ Repository ini bertugas menyediakan seluruh infrastruktur cloud AWS Native, jari
 Proyek KopDes Merah Putih menggunakan arsitektur pemisahan *Separation of Concerns*:
 
 1. **Repository IaC (Repository Ini)**:  
-   [`https://github.com/fendyramadhani9-cloud/terraform-automated-lab`](https://github.com/fendyramadhani9-cloud/terraform-automated-lab)  
+   [`https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab`](https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab)  
    Berisi seluruh kode deklarasi infrastruktur Terraform dan playbook Ansible untuk Amazon Linux 2023.
 
 2. **Repository Web Application**:  
@@ -51,9 +51,9 @@ flowchart TD
         end
 
         subgraph AWSServices["AWS Managed Services"]
-            IAM["IAM Instance Profile\n(SES, SSM)"]
+            IAM["IAM Instance Profile\n(LabInstanceProfile / SSM)"]
             SEC["AWS Secrets Manager\n(Kredensial RDS)"]
-            SES["Amazon Simple Email Service (SES)\n(Email Notifikasi Laporan)"]
+            SNS["Amazon Simple Notification Service (SNS)\n(Email Notifikasi Laporan - 100% AWS Academy Ready)"]
         end
     end
 
@@ -69,8 +69,8 @@ flowchart TD
     EC2_A -->|"MySQL (Port 3306)"| RDS
     EC2_B -->|"MySQL (Port 3306)"| RDS
 
-    EC2_A -.->|"IAM Role Auth"| SES
-    EC2_B -.->|"IAM Role Auth"| SES
+    EC2_A -.->|"Publish Report"| SNS
+    EC2_B -.->|"Publish Report"| SNS
     EC2_A -.->|"DB Secret Fetch"| SEC
     EC2_B -.->|"DB Secret Fetch"| SEC
 ```
@@ -82,13 +82,14 @@ flowchart TD
 | Resource | Deskripsi & Konfigurasi |
 | :--- | :--- |
 | **VPC & Subnets** | CIDR `10.0.0.0/16` membentang di 2 AZ dengan 2 Public Subnet, 2 Private App Subnet, dan 2 Private DB Subnet. |
-| **NAT Gateway** | 1 NAT Gateway di Public Subnet AZ-a (efisiensi biaya lab) dengan rute egress untuk private subnet. |
+| **NAT Gateway** | 1 NAT Gateway di Public Subnet AZ-a (efisiensi biaya & sesuai kuota 1 EIP AWS Academy). |
 | **Security Groups** | ALB SG (Port 80) $\rightarrow$ EC2 SG (Port 80 dari ALB) $\rightarrow$ RDS SG (Port 3306 dari EC2). |
 | **Load Balancer** | Application Load Balancer dengan Target Group `/index.php?page=login` dan stickiness `lb_cookie` 86400 detik. |
 | **Compute (ASG)** | Launch Template Amazon Linux 2023, instance type `t3.micro` / `t4g.micro`, kapasitas 2 s.d. 4 instance. |
-| **Database (RDS)** | Amazon RDS MySQL 8.0 (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default (siap multi-AZ). |
+| **Database (RDS)** | Amazon RDS MySQL 8.0 (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default. |
 | **Secrets Manager** | Menyimpan password master database secara acak tanpa hardcoded string di source code. |
-| **IAM Profile** | Memberikan izin `ses:SendEmail` dan AWS Systems Manager ke EC2 tanpa static key. |
+| **IAM Profile** | Mendukung `LabInstanceProfile` AWS Academy Learner Lab dan AWS Systems Manager ke EC2. |
+| **Amazon SNS** | Topik notifikasi rekapitulasi laporan ekonomi dan email subscription (didukung penuh di AWS Academy). |
 
 ---
 
