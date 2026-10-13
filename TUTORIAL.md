@@ -8,15 +8,16 @@ Panduan ini menyajikan tutorial langkah-demi-langkah yang terperinci untuk mende
 
 1. [Prasyarat Akun dan Peralatan](#1-prasyarat-akun-dan-peralatan)
 2. [Persiapan Kredensial AWS dan Key Pair](#2-persiapan-kredensial-aws-dan-key-pair)
-3. [Konfigurasi Identitas Amazon SES (Sandbox Verification)](#3-konfigurasi-identitas-amazon-ses-sandbox-verification)
-4. [Kustomisasi Variabel Terraform](#4-kustomisasi-variabel-terraform)
-5. [Urutan Provisioning Terraform](#5-urutan-provisioning-terraform)
-6. [Mekanisme Bootstrap Otomatis Instance EC2 (ASG)](#6-mekanisme-bootstrap-otomatis-instance-ec2-asg)
-7. [Inisialisasi dan Validasi Database Amazon RDS](#7-inisialisasi-dan-validasi-database-amazon-rds)
-8. [Pengujian Akses Aplikasi Melalui ALB](#8-pengujian-akses-aplikasi-melalui-alb)
-9. [Pengujian Auto Scaling, Health Check, dan Self-Healing](#9-pengujian-auto-scaling-health-check-dan-self-healing)
-10. [Pengujian Fitur Pengiriman Laporan via Amazon SES](#10-pengujian-fitur-pengiriman-laporan-via-amazon-ses)
-11. [Manajemen Biaya dan Prosedur Teardown (Cleanup)](#11-manajemen-biaya-dan-prosedur-teardown-cleanup)
+3. [Panduan Khusus AWS Academy Learner Lab](#3-panduan-khusus-aws-academy-learner-lab)
+4. [Konfigurasi Notifikasi Laporan (Amazon SES & Amazon SNS)](#4-konfigurasi-notifikasi-laporan-amazon-ses--amazon-sns)
+5. [Kustomisasi Variabel Terraform](#5-kustomisasi-variabel-terraform)
+6. [Urutan Provisioning Terraform](#6-urutan-provisioning-terraform)
+7. [Mekanisme Bootstrap Otomatis Instance EC2 (ASG)](#7-mekanisme-bootstrap-otomatis-instance-ec2-asg)
+8. [Inisialisasi dan Validasi Database Amazon RDS](#8-inisialisasi-dan-validasi-database-amazon-rds)
+9. [Pengujian Akses Aplikasi Melalui ALB](#9-pengujian-akses-aplikasi-melalui-alb)
+10. [Pengujian Auto Scaling, Health Check, dan Self-Healing](#10-pengujian-auto-scaling-health-check-dan-self-healing)
+11. [Pengujian Fitur Pengiriman Laporan via Amazon SES / SNS](#11-pengujian-fitur-pengiriman-laporan-via-amazon-ses--sns)
+12. [Manajemen Biaya dan Prosedur Teardown (Cleanup)](#12-manajemen-biaya-dan-prosedur-teardown-cleanup)
 
 ---
 
@@ -63,28 +64,30 @@ chmod 400 ~/.ssh/kopdes-key.pem
 
 ---
 
-## 3. Konfigurasi Identitas Amazon SES (Sandbox Verification)
+## 3. Panduan Khusus AWS Academy Learner Lab
 
-Secara default, akun AWS baru berada dalam mode **SES Sandbox**. Pada mode ini:
-1. Email hanya dapat dikirim **DARI** alamat email yang sudah diverifikasi.
-2. Email hanya dapat dikirim **KE** alamat email yang sudah diverifikasi.
-
-### Cara Memverifikasi Email Pengirim dan Penerima:
-
-```bash
-# Verifikasi email pengirim (misal: noreply@kopdes.id atau email Anda)
-aws ses verify-email-identity --email-address noreply@kopdes.id --region us-east-1
-
-# Verifikasi email penerima laporan (misal: admin@kopdes.id atau email Anda)
-aws ses verify-email-identity --email-address admin@kopdes.id --region us-east-1
-```
-
-> [!NOTE]
-> Buka inbox email yang didaftarkan, lalu klik link konfirmasi dari AWS Amazon SES. Setelah statusnya menjadi **Verified**, instance EC2 yang memiliki IAM Role `kopdes-ec2-instance-profile` dapat mengirimkan laporan email tanpa perlu AWS Access Key statis.
+> [!TIP]
+> **Karakteristik & Batasan AWS Academy Learner Lab:**
+> - **IAM Roles**: Mahasiswa **tidak diizinkan** mengeksekusi `iam:CreateRole` atau `iam:CreateInstanceProfile`. Solusi pada repo ini: telah disediakan opsi `use_aws_academy = true` di Terraform yang otomatis menggunakan role bawaan `LabRole` dan instance profile `LabInstanceProfile`.
+> - **Elastic IP Quota**: AWS Academy membatasi kuota Elastic IP sebanyak **tepat 1 EIP**. Arsitektur ini menggunakan `single_nat_gateway = true` sehingga tepat menggunakan 1 EIP tanpa melebihi batas kuota.
+> - **Amazon SES vs SNS**: Layanan SES seringkali dibatasi oleh SCP. Repositori ini otomatis menyediakan **Amazon SNS Topic & Email Subscription** sebagai mekanisme pengiriman notifikasi/laporan yang diizinkan 100% di lab.
+> - **Session Token**: Kredensial Learner Lab memiliki `aws_session_token` yang kedaluwarsa setiap 4 jam. Jangan lupa memperbarui kredensial via AWS CLI atau environment variables saat sesi lab di-restart.
 
 ---
 
-## 4. Kustomisasi Variabel Terraform
+## 4. Konfigurasi Notifikasi Laporan (Amazon SES & Amazon SNS)
+
+Di akun AWS standar, Amazon SES dapat digunakan setelah verifikasi identitas email. Di **AWS Academy Learner Lab**, notifikasi otomatis diarahkan melalui **Amazon SNS**:
+
+### Alur Kerja Notifikasi:
+1. Terraform membuat topik **Amazon SNS** (`kopdes-economic-reports-topic`) dan langganan email (`aws_sns_topic_subscription`) ke email `ses_recipient_email`.
+2. Saat `terraform apply` selesai, AWS SNS mengirim email verifikasi bertajuk **"AWS Notification - Subscription Confirmation"** ke inbox email tujuan.
+3. Buka email tersebut lalu klik tautan **Confirm subscription**.
+4. Saat tombol **"Kirim via Email"** ditekan di dashboard aplikasi KopDes, sistem mempublikasikan laporan ke topik SNS, dan Amazon SNS mendistribusikan email laporan ke seluruh pelanggan terdaftar.
+
+---
+
+## 5. Kustomisasi Variabel Terraform
 
 Salin template variabel lingkungan:
 
@@ -106,8 +109,12 @@ public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
 private_app_subnets  = ["10.0.10.0/24", "10.0.11.0/24"]
 private_db_subnets   = ["10.0.20.0/24", "10.0.21.0/24"]
 
-# Efisiensi Biaya Lab: 1 NAT Gateway di Public Subnet AZ-a
+# Efisiensi Biaya Lab & Kuota AWS Academy (1 EIP):
 single_nat_gateway   = true
+
+# Mode Khusus AWS Academy Learner Lab:
+use_aws_academy              = true
+academy_instance_profile_name = "LabInstanceProfile"
 
 # Kapasitas Auto Scaling Group
 asg_min_size         = 2
@@ -115,16 +122,16 @@ asg_desired_capacity = 2
 asg_max_size         = 4
 ec2_instance_type    = "t3.small"
 
-# Konfigurasi Amazon RDS
+# Konfigurasi Amazon RDS (Single-AZ untuk menghemat saldo lab)
 rds_instance_class   = "db.t4g.micro"
 rds_allocated_storage = 20
 rds_db_name          = "kopdes"
 rds_db_username      = "kopdes_admin"
-rds_multi_az         = false # Ubah true jika ingin Multi-AZ RDS
+rds_multi_az         = false
 
-# Konfigurasi Amazon SES
+# Konfigurasi Notifikasi Laporan
 ses_sender_email     = "noreply@kopdes.id"
-ses_recipient_email  = "admin@kopdes.id"
+ses_recipient_email  = "email_anda@domain.com" # Ganti dengan email Anda
 
 # Storage Opsional
 enable_s3_storage    = false
@@ -132,7 +139,7 @@ enable_s3_storage    = false
 
 ---
 
-## 5. Urutan Provisioning Terraform
+## 6. Urutan Provisioning Terraform
 
 Jalankan perintah berikut di dalam direktori `terraform/`:
 
@@ -182,7 +189,7 @@ vpc_id = "vpc-0abc123456789def0"
 
 ---
 
-## 6. Mekanisme Bootstrap Otomatis Instance EC2 (ASG)
+## 7. Mekanisme Bootstrap Otomatis Instance EC2 (ASG)
 
 Setiap instance yang diluncurkan oleh ASG akan menjalankan `user_data.sh.tftpl`:
 1. Sistem operasi Amazon Linux 2023 memperbarui paket dan menginstal `git`, `python3`, dan `ansible-core`.
@@ -207,7 +214,7 @@ systemctl status php-fpm
 
 ---
 
-## 7. Inisialisasi dan Validasi Database Amazon RDS
+## 8. Inisialisasi dan Validasi Database Amazon RDS
 
 Mekanisme inisialisasi database terpusat di `database/init.php`:
 1. Skrip secara otomatis dieksekusi saat bootstrap instance pertama.
@@ -218,7 +225,7 @@ Mekanisme inisialisasi database terpusat di `database/init.php`:
 
 ---
 
-## 8. Pengujian Akses Aplikasi Melalui ALB
+## 9. Pengujian Akses Aplikasi Melalui ALB
 
 Buka browser dan akses alamat DNS yang tercantum di output `alb_dns_name`:
 
@@ -230,7 +237,7 @@ http://<alb_dns_name>/
 1. **Kepala Wilayah (Administrator)**:
    - Email: `head@gov.local`
    - Password: `password123`
-   - Fitur: Laporan ekonomi wilayah, pemantauan status cluster AWS Native (ALB, ASG, RDS), dan pengiriman email laporan via SES.
+   - Fitur: Laporan ekonomi wilayah, pemantauan status cluster AWS Native (ALB, ASG, RDS), dan pengiriman email laporan via SES/SNS.
 2. **Pengelola Unit Koperasi (Manager)**:
    - Email: `manager@gov.local` s.d. `manager15@gov.local`
    - Password: `password123`
@@ -242,7 +249,7 @@ http://<alb_dns_name>/
 
 ---
 
-## 9. Pengujian Auto Scaling, Health Check, dan Self-Healing
+## 10. Pengujian Auto Scaling, Health Check, dan Self-Healing
 
 ### A. Pengujian Target Group Health Check
 Di AWS Console (EC2 > Target Groups) atau via AWS CLI:
@@ -268,7 +275,7 @@ Pastikan kedua target berada dalam kondisi **healthy** (HTTP 200 pada `/index.ph
 
 ---
 
-## 10. Pengujian Fitur Pengiriman Laporan via Amazon SES
+## 11. Pengujian Fitur Pengiriman Laporan via Amazon SES / SNS
 
 1. Login sebagai Kepala Wilayah: `head@gov.local` / `password123`.
 2. Buka menu **Laporan Ekonomi** (`pages/headgov/reports.php`).
@@ -276,13 +283,13 @@ Pastikan kedua target berada dalam kondisi **healthy** (HTTP 200 pada `/index.ph
 4. Sistem akan:
    - Memanggil `includes/ses_mailer.php`.
    - Mengambil kredensial dinamis dari IAM Instance Profile via IMDSv2.
-   - Mengirimkan email ringkasan omzet, surplus usaha, dan transaksi aktif ke `ses_recipient_email`.
+   - Mengirimkan email ringkasan omzet, surplus usaha, dan transaksi aktif ke `ses_recipient_email` (menggunakan Amazon SES, atau otomatis dialihkan ke Amazon SNS jika berjalan di AWS Academy).
    - Menampilkan notifikasi sukses di antarmuka web.
 5. Buka kotak masuk email tujuan untuk melihat format laporan yang diterima.
 
 ---
 
-## 11. Manajemen Biaya dan Prosedur Teardown (Cleanup)
+## 12. Manajemen Biaya dan Prosedur Teardown (Cleanup)
 
 ### Tips Menghemat Biaya Selama Pengujian:
 - Gunakan Single-AZ RDS (`rds_multi_az = false`).
@@ -296,4 +303,4 @@ cd terraform
 terraform destroy
 ```
 
-Ketik `yes` saat konfirmasi diminta. Seluruh resource (VPC, NAT Gateway, ALB, ASG, EC2, RDS, dan Secrets Manager) akan dihapus secara bersih sehingga tagihan AWS berhenti berjalan.
+Ketik `yes` saat konfirmasi diminta. Seluruh resource (VPC, NAT Gateway, ALB, ASG, EC2, RDS, SNS Topic, dan Secrets Manager) akan dihapus secara bersih sehingga tagihan AWS berhenti berjalan.
