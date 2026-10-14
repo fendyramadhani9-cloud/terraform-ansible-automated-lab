@@ -1,6 +1,6 @@
 # ==============================================================================
 # ANSIBLE GLOBAL VARIABLES: KOPDES AWS NATIVE AUTOMATION
-# Target Environment: Amazon Linux 2023 (AL2023) & Amazon RDS MySQL
+# Target Environment: Ubuntu 24.04 LTS & Amazon RDS MySQL
 # ==============================================================================
 
 # Application & Identity

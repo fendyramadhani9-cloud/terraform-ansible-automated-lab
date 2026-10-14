@@ -1,6 +1,6 @@
 ---
 # ==============================================================================
-# Webserver Service Handlers (Amazon Linux 2023 / systemd)
+# Webserver Service Handlers (Ubuntu 24.04 LTS / systemd)
 # ==============================================================================
 
 - name: Restart php-fpm

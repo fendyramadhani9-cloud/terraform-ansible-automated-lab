@@ -1,6 +1,6 @@
 ---
 # ==============================================================================
-# Role: Common (Baseline Amazon Linux 2023 Configuration)
+# Role: Common (Baseline Ubuntu 24.04 LTS Configuration)
 # ==============================================================================
 
 - name: Perbarui package cache dan pasang utilitas dasar sistem di Ubuntu / Debian

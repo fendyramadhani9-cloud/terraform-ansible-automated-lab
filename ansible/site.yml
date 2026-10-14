@@ -1,14 +1,14 @@
 ---
 # ==============================================================================
 # MASTER ANSIBLE PLAYBOOK: KOPDES AWS NATIVE INFRASTRUCTURE DEPLOYMENT
-# Target Environment: Amazon EC2 Auto Scaling Group Nodes (Amazon Linux 2023)
+# Target Environment: Amazon EC2 Auto Scaling Group Nodes (Ubuntu 24.04 LTS)
 # Database: Amazon RDS MySQL | Load Balancer: Application Load Balancer (ALB)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # Play 1: Baseline & Web Application Deployment (EC2 Web Server Instances)
 # ------------------------------------------------------------------------------
-- name: "Play 1: Inisialisasi Baseline & Deploy Web Server KopDes di Amazon Linux 2023"
+- name: "Play 1: Inisialisasi Baseline & Deploy Web Server KopDes di Ubuntu 24.04 LTS"
   hosts: webservers
   become: true
   gather_facts: true

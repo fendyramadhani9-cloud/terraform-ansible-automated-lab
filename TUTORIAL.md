@@ -379,7 +379,7 @@ vpc_id = "vpc-0123456789abcdef0"
 
 Setiap kali instance EC2 baru diluncurkan oleh Auto Scaling Group, skrip template `user_data.sh.tftpl` akan dieksekusi secara otomatis:
 
-1. **Pembaruan OS**: Memperbarui paket sistem operasi **Amazon Linux 2023** dan menginstal `git`, `python3`, `jq`, `awscli`, dan `ansible-core`.
+1. **Pembaruan OS**: Memperbarui paket sistem operasi **Ubuntu 24.04 LTS (Noble Numbat)** via `apt-get` dan menginstal `git`, `python3`, `jq`, `awscli`, dan `ansible-core`.
 2. **Kloning Repositori**:
    - Meng-clone repositori IaC (`terraform-ansible-automated-lab`) ke folder `/opt/kopdes-iac`.
    - Meng-clone repositori Web Application (`kopdes-iac-automationAWS`) ke folder `/var/www/kopdes`.
@@ -388,10 +388,10 @@ Setiap kali instance EC2 baru diluncurkan oleh Auto Scaling Group, skrip templat
    ```bash
    ansible-playbook -i "localhost," -c local /opt/kopdes-iac/ansible/playbook_app.yml ...
    ```
-   - Menginstal Nginx dan PHP 8.2 (dengan ekstensi `pdo_mysql`, `curl`, `mbstring`, `zip`).
-   - Mengonfigurasi Unix domain socket PHP-FPM (`/run/php-fpm/www.sock`).
+   - Menginstal Nginx dan PHP 8.3 (dengan ekstensi `php-mysql`, `curl`, `mbstring`, `zip`, `xml`, `bcmath`).
+   - Mengonfigurasi Unix domain socket PHP-FPM (`/run/php/php-fpm.sock`).
    - Menghasilkan file konfigurasi `.env` berisi endpoint RDS, ALB DNS, dan ARN SNS Topic.
-   - Mengonfigurasi virtual host Nginx port 80 dan mengaktifkan systemd service.
+   - Mengonfigurasi virtual host Nginx port 80 dan mengaktifkan systemd service (`php8.3-fpm` dan `nginx`).
 4. **Migrasi Database**: Menjalankan skrip inisialisasi tabel dan data seed ke Amazon RDS.
 
 ### Cara Memantau Log Bootstrap (Opsional):
