@@ -77,6 +77,12 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
+variable "key_name" {
+  description = "Nama EC2 Key Pair untuk akses SSH debugging ke instance EC2. Di AWS Academy Learner Lab default adalah 'vockey'."
+  type        = string
+  default     = "vockey"
+}
+
 variable "asg_min_size" {
   description = "Kapasitas minimum instance pada Auto Scaling Group"
   type        = number

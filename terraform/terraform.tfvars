@@ -18,6 +18,7 @@ single_nat_gateway       = true
 
 # Compute (Auto Scaling Group)
 instance_type        = "t3.micro"
+key_name             = "vockey"
 asg_min_size         = 2
 asg_max_size         = 4
 asg_desired_capacity = 2

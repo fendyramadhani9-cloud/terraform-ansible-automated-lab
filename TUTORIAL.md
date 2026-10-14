@@ -50,17 +50,17 @@ export AWS_DEFAULT_REGION="us-east-1"
 aws sts get-caller-identity
 ```
 
-### B. Membuat EC2 Key Pair (Opsional untuk SSH Debugging)
-Buat EC2 Key Pair di region target (`us-east-1`):
+### B. EC2 Key Pair (Menggunakan Bawaan AWS Academy: 'vockey')
+Di AWS Academy Learner Lab, Anda **tidak perlu** membuat key pair baru karena key pair default bernama **`vockey`** sudah otomatis aktif di region `us-east-1`.
 
-```bash
-aws ec2 create-key-pair \
-  --key-name kopdes-key \
-  --query 'KeyMaterial' \
-  --output text > ~/.ssh/kopdes-key.pem
-
-chmod 400 ~/.ssh/kopdes-key.pem
-```
+Cukup unduh file private key dari konsol lab:
+1. Klik tombol **AWS Details** pada panel lab.
+2. Di samping bagian **SSH Key**, klik tautan unduh file **`labsuser.pem`** (atau `labsuser.ppk` jika menggunakan PuTTY).
+3. Simpan file tersebut di folder SSH lokal Anda:
+   ```bash
+   # Di Linux / macOS / WSL / Git Bash:
+   chmod 400 ~/.ssh/labsuser.pem
+   ```
 
 ---
 
@@ -68,6 +68,7 @@ chmod 400 ~/.ssh/kopdes-key.pem
 
 > [!TIP]
 > **Karakteristik & Batasan AWS Academy Learner Lab:**
+> - **EC2 Key Pair**: Otomatis menggunakan key pair bawaan lab bernama **`vockey`** (`key_name = "vockey"`). Private key `labsuser.pem` diunduh langsung dari tab AWS Details.
 > - **IAM Roles**: Mahasiswa **tidak diizinkan** mengeksekusi `iam:CreateRole` atau `iam:CreateInstanceProfile`. Solusi pada repo ini: telah disediakan opsi `use_aws_academy = true` di Terraform yang otomatis menggunakan role bawaan `LabRole` dan instance profile `LabInstanceProfile`.
 > - **Elastic IP Quota**: AWS Academy membatasi kuota Elastic IP sebanyak **tepat 1 EIP**. Arsitektur ini menggunakan `single_nat_gateway = true` sehingga tepat menggunakan 1 EIP tanpa melebihi batas kuota.
 > - **Amazon SES vs SNS**: Layanan SES seringkali dibatasi oleh SCP. Repositori ini otomatis menyediakan **Amazon SNS Topic & Email Subscription** sebagai mekanisme pengiriman notifikasi/laporan yang diizinkan 100% di lab.
@@ -116,11 +117,12 @@ single_nat_gateway   = true
 use_aws_academy              = true
 academy_instance_profile_name = "LabInstanceProfile"
 
-# Kapasitas Auto Scaling Group
+# Kapasitas Auto Scaling Group & Key Pair
+instance_type        = "t3.micro"
+key_name             = "vockey" # Key Pair bawaan AWS Academy Learner Lab
 asg_min_size         = 2
 asg_desired_capacity = 2
 asg_max_size         = 4
-ec2_instance_type    = "t3.small"
 
 # Konfigurasi Amazon RDS (Single-AZ untuk menghemat saldo lab)
 rds_instance_class   = "db.t4g.micro"
@@ -129,9 +131,8 @@ rds_db_name          = "kopdes"
 rds_db_username      = "kopdes_admin"
 rds_multi_az         = false
 
-# Konfigurasi Notifikasi Laporan
-ses_sender_email     = "noreply@kopdes.id"
-ses_recipient_email  = "email_anda@domain.com" # Ganti dengan email Anda
+# Konfigurasi Notifikasi Laporan (Amazon SNS - 100% AWS Academy Ready)
+sns_recipient_email  = "email_anda@domain.com" # Ganti dengan email Anda
 
 # Storage Opsional
 enable_s3_storage    = false
