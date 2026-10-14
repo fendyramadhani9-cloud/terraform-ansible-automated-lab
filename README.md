@@ -12,7 +12,7 @@ Proyek KopDes Merah Putih menggunakan arsitektur pemisahan *Separation of Concer
 
 1. **Repository IaC (Repository Ini)**:  
    [`https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab`](https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab)  
-   Berisi seluruh kode deklarasi infrastruktur Terraform dan playbook Ansible untuk Amazon Linux 2023.
+   Berisi seluruh kode deklarasi infrastruktur Terraform dan playbook Ansible untuk Ubuntu 24.04 LTS.
 
 2. **Repository Web Application**:  
    [`https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS`](https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS)  
@@ -40,8 +40,8 @@ flowchart TD
 
             subgraph PrivateAppSubnets["Private Application Subnets (AZ-a & AZ-b)"]
                 subgraph ASG["Auto Scaling Group (Min: 2, Desired: 2, Max: 4)"]
-                    EC2_A["EC2 Web Server 01\nAmazon Linux 2023\nNginx + PHP-FPM"]
-                    EC2_B["EC2 Web Server 02\nAmazon Linux 2023\nNginx + PHP-FPM"]
+                    EC2_A["EC2 Web Server 01\nUbuntu 24.04 LTS\nNginx + PHP-FPM"]
+                    EC2_B["EC2 Web Server 02\nUbuntu 24.04 LTS\nNginx + PHP-FPM"]
                 end
             end
 
@@ -85,7 +85,7 @@ flowchart TD
 | **NAT Gateway** | 1 NAT Gateway di Public Subnet AZ-a (efisiensi biaya & sesuai kuota 1 EIP AWS Academy). |
 | **Security Groups** | ALB SG (Port 80) $\rightarrow$ EC2 SG (Port 80 dari ALB) $\rightarrow$ RDS SG (Port 3306 dari EC2). |
 | **Load Balancer** | Application Load Balancer dengan Target Group `/index.php?page=login` dan stickiness `lb_cookie` 86400 detik. |
-| **Compute (ASG)** | Launch Template Amazon Linux 2023, instance type `t3.micro` / `t4g.micro`, kapasitas 2 s.d. 4 instance. |
+| **Compute (ASG)** | Launch Template Ubuntu 24.04 LTS (Noble Numbat), instance type `t3.micro`, kapasitas 2 s.d. 4 instance. |
 | **Database (RDS)** | Amazon RDS MySQL 8.0 (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default. |
 | **Secrets Manager** | Menyimpan password master database secara acak tanpa hardcoded string di source code. |
 | **IAM Profile** | Mendukung `LabInstanceProfile` AWS Academy Learner Lab dan AWS Systems Manager ke EC2. |
@@ -111,27 +111,27 @@ Setiap instance baru yang diluncurkan oleh Auto Scaling Group menjalankan skrip 
 ## Struktur Direktori Repository
 
 ```text
-terraform-automated-lab/
+terraform-ansible-automated-lab/
 |-- terraform/                         # Deklarasi Infrastruktur Cloud (AWS)
 |   |-- versions.tf                    # Provider AWS (~> 5.0) dan Random (~> 3.6)
-|   |-- variables.tf                   # Definisi variabel VPC, ASG, RDS, SES, Repo URLs
+|   |-- variables.tf                   # Definisi variabel VPC, ASG, RDS, SNS, Repo URLs
 |   |-- terraform.tfvars.example       # Template variabel deployment
 |   |-- terraform.tfvars               # Nilai variabel aktif
-|   |-- main.tf                        # Resource VPC, ALB, ASG, RDS, IAM, Secrets Manager
-|   |-- outputs.tf                     # Output aman (alb_dns_name, rds_endpoint, vpc_id, asg_name)
+|   |-- main.tf                        # Resource VPC, ALB, ASG, RDS, IAM, Secrets Manager, SNS
+|   |-- outputs.tf                     # Output aman (alb_dns_name, rds_endpoint, sns_topic_arn)
 |   `-- user_data.sh.tftpl             # Script bootstrap cloud-init EC2 (Ansible runner)
 |
-|-- ansible/                           # Manajemen Konfigurasi (Amazon Linux 2023)
-|   |-- ansible.cfg                    # Konfigurasi interpreter & user ec2-user
+|-- ansible/                           # Manajemen Konfigurasi (Ubuntu 24.04 LTS)
+|   |-- ansible.cfg                    # Konfigurasi interpreter & user ubuntu
 |   |-- inventory.ini                  # Template inventory host EC2
 |   |-- generate_inventory_aws.sh      # Skrip dinamis query EC2 via AWS CLI
 |   |-- aws_ec2.yml                    # Plugin konfigurasi dynamic inventory AWS
 |   |-- group_vars/
-|   |   `-- all.yml                    # Variabel konfigurasi AWS, RDS, ALB, SES
+|   |   `-- all.yml                    # Variabel konfigurasi AWS, RDS, ALB, SNS
 |   |-- playbook_app.yml               # Playbook bootstrap mandiri untuk user_data ASG
 |   |-- site.yml                       # Master playbook multi-node orchestration
 |   `-- roles/
-|       |-- common/                    # Baseline AL2023 (dnf update, chrony, curl)
+|       |-- common/                    # Baseline Ubuntu 24.04 (apt update, curl, git)
 |       |-- webserver/                 # Nginx, PHP-FPM, virtual host, deployment kode
 |       `-- database/                  # Inisialisasi schema & seed ke Amazon RDS
 |
@@ -144,25 +144,26 @@ terraform-automated-lab/
 
 ## Panduan Menjalankan
 
-### 1. Prasyarat
-- AWS CLI terkonfigurasi dengan profil Administrator:
-  ```bash
-  aws sts get-caller-identity
-  ```
-- Terraform v1.5.0 atau lebih baru terpasang.
+Panduan lengkap langkah-demi-langkah mulai dari instalasi AWS CLI v2, setup kredensial AWS Academy Learner Lab, konfigurasi key pair `vockey`, deployment Terraform, hingga pengujian aplikasi dapat dibaca di:
+👉 **[TUTORIAL.md](./TUTORIAL.md)**
 
-### 2. Deployment Terraform
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
-terraform init
-terraform plan
-terraform apply
-```
-
-### 3. Pembersihan Resource (Teardown)
-Untuk menghapus seluruh resource agar tidak menimbulkan biaya berkelanjutan:
-```bash
-cd terraform
-terraform destroy
-```
+### Ringkasan Cepat:
+1. **Set Kredensial AWS Academy**:
+   ```bash
+   export AWS_ACCESS_KEY_ID="ASIAxxxxxxxx"
+   export AWS_SECRET_ACCESS_KEY="xxxxxxxx"
+   export AWS_SESSION_TOKEN="IQoJb3JpZ2lu..."
+   export AWS_DEFAULT_REGION="us-east-1"
+   ```
+2. **Provisioning Infrastruktur**:
+   ```bash
+   cd terraform
+   cp terraform.tfvars.example terraform.tfvars
+   terraform init
+   terraform apply
+   ```
+3. **Pembersihan Resource (Teardown)**:
+   ```bash
+   cd terraform
+   terraform destroy
+   ```

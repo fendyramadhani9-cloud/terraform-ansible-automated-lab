@@ -10,13 +10,18 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-data "aws_ami" "al2023" {
+data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["amazon"]
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
-    values = ["al2023-ami-2023.*-x86_64"]
+    values = ["ubuntu/images/hvm-ssd*/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 
   filter {
@@ -520,7 +525,7 @@ resource "aws_lb_listener" "http" {
 # ------------------------------------------------------------------------------
 resource "aws_launch_template" "app_lt" {
   name_prefix   = "${var.project_name}-lt-"
-  image_id      = data.aws_ami.al2023.id
+  image_id      = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   key_name      = var.key_name != "" ? var.key_name : null
 

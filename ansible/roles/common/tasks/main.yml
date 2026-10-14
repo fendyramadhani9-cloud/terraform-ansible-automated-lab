@@ -3,7 +3,21 @@
 # Role: Common (Baseline Amazon Linux 2023 Configuration)
 # ==============================================================================
 
-- name: Perbarui package cache dan pasang utilitas dasar sistem
+- name: Perbarui package cache dan pasang utilitas dasar sistem di Ubuntu / Debian
+  ansible.builtin.apt:
+    name:
+      - curl
+      - git
+      - jq
+      - tar
+      - unzip
+      - ca-certificates
+      - software-properties-common
+    state: present
+    update_cache: yes
+  when: ansible_os_family == 'Debian'
+
+- name: Perbarui package cache dan pasang utilitas dasar sistem di RedHat / AL2023
   ansible.builtin.dnf:
     name:
       - curl

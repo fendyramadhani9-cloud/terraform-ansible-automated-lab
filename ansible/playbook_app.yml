@@ -1,6 +1,6 @@
 ---
 # ==============================================================================
-# ANSIBLE PLAYBOOK: KOPDES APPLICATION NODE BOOTSTRAP (AMAZON LINUX 2023)
+# ANSIBLE PLAYBOOK: KOPDES APPLICATION NODE BOOTSTRAP (UBUNTU 24.04 LTS)
 # ==============================================================================
 # Playbook ini digunakan oleh Launch Template / user_data untuk bootstrapping
 # mandiri (self-healing & auto-deployment) setiap kali Auto Scaling Group (ASG)
@@ -10,7 +10,7 @@
 # ansible-playbook -i "localhost," -c local ansible/playbook_app.yml
 # ==============================================================================
 
-- name: Bootstrap Node Web Server KopDes Merah Putih (Amazon Linux 2023)
+- name: Bootstrap Node Web Server KopDes Merah Putih (Ubuntu 24.04 LTS)
   hosts: localhost
   connection: local
   become: true

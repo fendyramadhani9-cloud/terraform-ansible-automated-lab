@@ -1,21 +1,32 @@
 #!/bin/bash
 # ==============================================================================
-# Auto Scaling Group Instance Bootstrap Script (Amazon Linux 2023)
+# Auto Scaling Group Instance Bootstrap Script (Ubuntu 24.04 LTS)
 # Self-Healing & Automated Ansible Deployment for KopDes Merah Putih
 # ==============================================================================
 
 set -euo pipefail
 exec > >(tee -a /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 
-echo "[INFO] $(date) - Memulai bootstrap instance KopDes Merah Putih di Amazon Linux 2023..."
+echo "[INFO] $(date) - Memulai bootstrap instance KopDes Merah Putih di Ubuntu 24.04 LTS..."
+
+export DEBIAN_FRONTEND=noninteractive
 
 # 1. Update OS package repository & instal dependencies awal
-dnf clean all
-dnf update -y --releasever=latest
-dnf install -y git python3 python3-pip jq awscli
+apt-get update -y
+apt-get install -y git python3 python3-pip python3-venv jq curl unzip software-properties-common
+
+# Instal AWS CLI jika belum terpasang
+if ! command -v aws &> /dev/null; then
+  apt-get install -y awscli || (
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip -q awscliv2.zip
+    ./aws/install
+    rm -rf aws awscliv2.zip
+  )
+fi
 
 # 2. Instal Ansible Core untuk otomasi lokal
-pip3 install ansible-core
+apt-get install -y ansible-core || apt-get install -y ansible || pip3 install --break-system-packages ansible-core
 
 # 3. Clone repository IaC Automation (Ansible Playbooks & Roles)
 IAC_DIR="/opt/kopdes-iac"
@@ -33,15 +44,13 @@ fi
 echo "[INFO] Mengunduh repository KopDes Web dari ${git_repo_url}..."
 git clone "${git_repo_url}" "$APP_DIR"
 
-# 5. Ambil kredensial database dari AWS Secrets Manager (jika secret_arn tersedia)
+# 5. Ambil variabel lingkungan
 DB_HOST="${db_host}"
 DB_NAME="${db_name}"
 DB_USER="${db_user}"
 DB_PASS="${db_pass}"
 AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
-SES_SENDER="${ses_sender}"
-SES_RECIPIENT="${ses_recipient}"
 SNS_RECIPIENT="${sns_recipient}"
 SNS_TOPIC_ARN="${sns_topic_arn}"
 
@@ -56,8 +65,6 @@ ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" \
                 db_password=$DB_PASS \
                 alb_dns_name=$ALB_DNS \
                 aws_region=$AWS_REGION \
-                ses_sender_email=$SES_SENDER \
-                ses_recipient_email=$SES_RECIPIENT \
                 sns_recipient_email=$SNS_RECIPIENT \
                 sns_topic_arn=$SNS_TOPIC_ARN"
 
@@ -67,9 +74,10 @@ php /var/www/kopdes/database/init.php || true
 
 # 8. Pastikan Nginx dan PHP-FPM aktif dan berjalan
 systemctl daemon-reload
-systemctl enable --now php-fpm
-systemctl enable --now nginx
-systemctl restart php-fpm
-systemctl restart nginx
+PHP_FPM_SVC=$(systemctl list-unit-files | grep -oE "php[0-9.]*-fpm" | head -n 1 || echo "php-fpm")
+systemctl enable --now "$PHP_FPM_SVC" || true
+systemctl enable --now nginx || true
+systemctl restart "$PHP_FPM_SVC" || true
+systemctl restart nginx || true
 
 echo "[OK] $(date) - Bootstrap instance KopDes selesai dengan sukses! Node siap menerima trafik dari ALB."

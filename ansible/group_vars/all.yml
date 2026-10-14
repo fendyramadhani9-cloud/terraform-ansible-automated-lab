@@ -6,8 +6,8 @@
 # Application & Identity
 app_name: "KopDes Merah Putih"
 app_dest_dir: "/var/www/kopdes"
-app_user: "nginx"
-app_group: "nginx"
+app_user: "www-data"
+app_group: "www-data"
 app_env: "production"
 app_debug: false
 

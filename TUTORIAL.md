@@ -1,308 +1,525 @@
 # Panduan Lengkap Deployment AWS Native: KopDes Merah Putih
+## Menggunakan Terraform & Ansible di AWS Academy Learner Lab
 
-Panduan ini menyajikan tutorial langkah-demi-langkah yang terperinci untuk mendeploy platform **KopDes Merah Putih** ke infrastruktur **AWS Native** menggunakan **Terraform** dan **Ansible**.
+Panduan ini menyajikan instruksi komprehensif langkah-demi-langkah mulai dari instalasi peralatan dasar (*prerequisites*), konfigurasi kredensial AWS Academy, penyediaan infrastruktur *AWS Native* dengan **Terraform**, otomasi konfigurasi server dengan **Ansible**, integrasi notifikasi **Amazon SNS**, hingga pengujian aplikasi dan prosedur *teardown* (pembersihan resource).
 
 ---
 
 ## Daftar Isi
 
-1. [Prasyarat Akun dan Peralatan](#1-prasyarat-akun-dan-peralatan)
-2. [Persiapan Kredensial AWS dan Key Pair](#2-persiapan-kredensial-aws-dan-key-pair)
-3. [Panduan Khusus AWS Academy Learner Lab](#3-panduan-khusus-aws-academy-learner-lab)
-4. [Konfigurasi Notifikasi Laporan (Amazon SES & Amazon SNS)](#4-konfigurasi-notifikasi-laporan-amazon-ses--amazon-sns)
-5. [Kustomisasi Variabel Terraform](#5-kustomisasi-variabel-terraform)
-6. [Urutan Provisioning Terraform](#6-urutan-provisioning-terraform)
-7. [Mekanisme Bootstrap Otomatis Instance EC2 (ASG)](#7-mekanisme-bootstrap-otomatis-instance-ec2-asg)
+1. [Prasyarat & Panduan Instalasi Peralatan Lengkap](#1-prasyarat--panduan-instalasi-peralatan-lengkap)
+   - [A. Instalasi AWS CLI v2](#a-instalasi-aws-cli-v2)
+   - [B. Instalasi HashiCorp Terraform](#b-instalasi-hashicorp-terraform)
+   - [C. Instalasi Git & SSH Client](#c-instalasi-git--ssh-client)
+   - [D. Verifikasi Instalasi Seluruh Peralatan](#d-verifikasi-instalasi-seluruh-peralatan)
+2. [Persiapan Kredensial AWS Academy & Key Pair 'vockey'](#2-persiapan-kredensial-aws-academy--key-pair-vockey)
+   - [A. Memulai Lab & Menyalin Kredensial AWS CLI](#a-memulai-lab--menyalin-kredensial-aws-cli)
+   - [B. Mengatur Environment Variables Kredensial](#b-mengatur-environment-variables-kredensial)
+   - [C. Verifikasi Akses AWS CLI](#c-verifikasi-akses-aws-cli)
+   - [D. Mengunduh EC2 Key Pair Bawaan ('vockey')](#d-mengunduh-ec2-key-pair-bawaan-vockey)
+3. [Karakteristik & Kebijakan Khusus AWS Academy Learner Lab](#3-karakteristik--kebijakan-khusus-aws-academy-learner-lab)
+4. [Mekanisme Notifikasi Laporan via Amazon SNS (Bebas dari SES)](#4-mekanisme-notifikasi-laporan-via-amazon-sns-bebas-dari-ses)
+5. [Kloning Repositori & Kustomisasi Variabel Terraform](#5-kloning-repositori--kustomisasi-variabel-terraform)
+6. [Urutan Provisioning Infrastruktur (Terraform)](#6-urutan-provisioning-infrastruktur-terraform)
+7. [Mekanisme Bootstrap Otomatis EC2 (Cloud-Init & Ansible)](#7-mekanisme-bootstrap-otomatis-ec2-cloud-init--ansible)
 8. [Inisialisasi dan Validasi Database Amazon RDS](#8-inisialisasi-dan-validasi-database-amazon-rds)
-9. [Pengujian Akses Aplikasi Melalui ALB](#9-pengujian-akses-aplikasi-melalui-alb)
-10. [Pengujian Auto Scaling, Health Check, dan Self-Healing](#10-pengujian-auto-scaling-health-check-dan-self-healing)
-11. [Pengujian Fitur Pengiriman Laporan via Amazon SES / SNS](#11-pengujian-fitur-pengiriman-laporan-via-amazon-ses--sns)
-12. [Manajemen Biaya dan Prosedur Teardown (Cleanup)](#12-manajemen-biaya-dan-prosedur-teardown-cleanup)
+9. [Pengujian Akses Aplikasi Melalui Application Load Balancer](#9-pengujian-akses-aplikasi-melalui-application-load-balancer)
+10. [Pengujian Auto Scaling, Target Group Health Check, & Self-Healing](#10-pengujian-auto-scaling-target-group-health-check--self-healing)
+11. [Pengujian Pengiriman Laporan Ekonomi via Amazon SNS](#11-pengujian-pengiriman-laporan-ekonomi-via-amazon-sns)
+12. [Manajemen Saldo Lab & Prosedur Teardown (Cleanup)](#12-manajemen-saldo-lab--prosedur-teardown-cleanup)
 
 ---
 
-## 1. Prasyarat Akun dan Peralatan
+## 1. Prasyarat & Panduan Instalasi Peralatan Lengkap
 
-Sebelum memulai proses deployment, pastikan workstation/laptop Anda telah terpasang:
-- **Akun AWS**: Akun dengan hak akses Administrator atau PowerUser untuk membuat VPC, EC2, ASG, RDS, IAM, Secrets Manager, dan SES.
-- **AWS CLI v2**: Terpasang dan terkonfigurasi (`aws --version`).
-- **Terraform**: HashiCorp Terraform v1.5.0 atau lebih baru (`terraform -version`).
-- **Git**: Untuk clone dan manipulasi kode sumber repository.
-- **OpenSSH Client**: Untuk debugging instance EC2 (jika diperlukan).
+Sebelum memulai deployment, pastikan komputer/laptop lokal Anda telah terpasang peralatan CLI berikut:
 
----
+### A. Instalasi AWS CLI v2
 
-## 2. Persiapan Kredensial AWS dan Key Pair
+#### 1. Windows:
+* **Via Windows Package Manager (winget)**:
+  ```powershell
+  winget install Amazon.AWSCLI
+  ```
+* **Atau Unduh Installer Resmi (MSI)**:
+  Unduh dan jalankan file installer dari [AWS CLI MSI Installer](https://awscli.amazonaws.com/AWSCLIV2.msi).
 
-### A. Autentikasi AWS CLI
-Pastikan AWS CLI telah diautentikasi dengan benar. Disarankan menggunakan named profile atau environment variables (jangan menanam kredensial statis di source code):
-
+#### 2. Linux (Ubuntu / Debian / RHEL / CentOS):
 ```bash
-# Opsi 1: Menggunakan AWS Configure
-aws configure
-
-# Opsi 2: Menggunakan Environment Variables
-export AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxxxx"
-export AWS_SECRET_ACCESS_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-export AWS_DEFAULT_REGION="us-east-1"
-
-# Verifikasi identitas caller
-aws sts get-caller-identity
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+rm -rf aws awscliv2.zip
 ```
 
-### B. EC2 Key Pair (Menggunakan Bawaan AWS Academy: 'vockey')
-Di AWS Academy Learner Lab, Anda **tidak perlu** membuat key pair baru karena key pair default bernama **`vockey`** sudah otomatis aktif di region `us-east-1`.
+#### 3. macOS:
+* **Via Homebrew**:
+  ```bash
+  brew install awscli
+  ```
+* **Atau Unduh Package Resmi**:
+  Unduh installer dari [AWS CLI macOS PKG](https://awscli.amazonaws.com/AWSCLIV2.pkg).
 
-Cukup unduh file private key dari konsol lab:
-1. Klik tombol **AWS Details** pada panel lab.
-2. Di samping bagian **SSH Key**, klik tautan unduh file **`labsuser.pem`** (atau `labsuser.ppk` jika menggunakan PuTTY).
-3. Simpan file tersebut di folder SSH lokal Anda:
-   ```bash
-   # Di Linux / macOS / WSL / Git Bash:
-   chmod 400 ~/.ssh/labsuser.pem
+---
+
+### B. Instalasi HashiCorp Terraform
+
+Diperlukan Terraform versi **v1.5.0** atau lebih baru.
+
+#### 1. Windows:
+* **Via Winget**:
+  ```powershell
+  winget install HashiCorp.Terraform
+  ```
+* **Via Chocolatey**:
+  ```powershell
+  choco install terraform
+  ```
+
+#### 2. Linux (Ubuntu / Debian):
+```bash
+sudo apt-get update && sudo apt-get install -y gnupg software-properties-common curl
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt-get update && sudo apt-get install -y terraform
+```
+
+#### 3. macOS:
+```bash
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+```
+
+---
+
+### C. Instalasi Git & SSH Client
+
+* **Windows**: Unduh [Git for Windows](https://git-scm.com/download/win) (sudah termasuk Git Bash & OpenSSH Client) atau jalankan `winget install Git.Git`.
+* **Linux**: Jalankan `sudo apt install -y git openssh-client` atau `sudo dnf install -y git openssh-clients`.
+* **macOS**: Jalankan `brew install git`.
+
+---
+
+### D. Verifikasi Instalasi Seluruh Peralatan
+
+Buka terminal baru dan jalankan perintah verifikasi berikut:
+
+```bash
+aws --version
+terraform -version
+git --version
+```
+Pastikan seluruh perintah menghasilkan output versi tanpa pesan error.
+
+---
+
+## 2. Persiapan Kredensial AWS Academy & Key Pair 'vockey'
+
+AWS Academy Learner Lab menggunakan kredensial sementara (*temporary session credentials*) yang mencakup **AWS Session Token**. Token ini berlaku hingga maksimal **4 jam**.
+
+### A. Memulai Lab & Menyalin Kredensial AWS CLI
+
+1. Masuk ke portal **AWS Academy** dan buka kursus Anda $\rightarrow$ Pilih **Learner Lab**.
+2. Klik tombol **Start Lab** di kanan atas.
+3. Tunggu hingga lingkaran indikator di samping tulisan **AWS** berubah menjadi warna hijau stabil.
+4. Klik tombol **AWS Details** (di sebelah kanan tulisan *Start Lab*).
+5. Pada panel yang muncul, cari baris **AWS CLI**, lalu klik tautan **Show**.
+6. Anda akan melihat blok teks kredensial seperti berikut:
+   ```text
+   [default]
+   aws_access_key_id=ASIAXXXXXXXXXXXXXXXX
+   aws_secret_access_key=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   aws_session_token=IQoJb3JpZ2luX2VjEPH//////////...
    ```
 
 ---
 
-## 3. Panduan Khusus AWS Academy Learner Lab
+### B. Mengatur Environment Variables Kredensial
 
-> [!TIP]
-> **Karakteristik & Batasan AWS Academy Learner Lab:**
-> - **EC2 Key Pair**: Otomatis menggunakan key pair bawaan lab bernama **`vockey`** (`key_name = "vockey"`). Private key `labsuser.pem` diunduh langsung dari tab AWS Details.
-> - **IAM Roles**: Mahasiswa **tidak diizinkan** mengeksekusi `iam:CreateRole` atau `iam:CreateInstanceProfile`. Solusi pada repo ini: telah disediakan opsi `use_aws_academy = true` di Terraform yang otomatis menggunakan role bawaan `LabRole` dan instance profile `LabInstanceProfile`.
-> - **Elastic IP Quota**: AWS Academy membatasi kuota Elastic IP sebanyak **tepat 1 EIP**. Arsitektur ini menggunakan `single_nat_gateway = true` sehingga tepat menggunakan 1 EIP tanpa melebihi batas kuota.
-> - **Amazon SES vs SNS**: Layanan SES seringkali dibatasi oleh SCP. Repositori ini otomatis menyediakan **Amazon SNS Topic & Email Subscription** sebagai mekanisme pengiriman notifikasi/laporan yang diizinkan 100% di lab.
-> - **Session Token**: Kredensial Learner Lab memiliki `aws_session_token` yang kedaluwarsa setiap 4 jam. Jangan lupa memperbarui kredensial via AWS CLI atau environment variables saat sesi lab di-restart.
+Salin nilai kredensial di atas ke terminal aktif tempat Anda akan mengeksekusi Terraform:
+
+#### 1. Jika Menggunakan Windows PowerShell:
+```powershell
+$env:AWS_ACCESS_KEY_ID="ASIAXXXXXXXXXXXXXXXX"
+$env:AWS_SECRET_ACCESS_KEY="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+$env:AWS_SESSION_TOKEN="IQoJb3JpZ2luX2VjEPH//////////..."
+$env:AWS_DEFAULT_REGION="us-east-1"
+```
+
+#### 2. Jika Menggunakan Linux / macOS / Git Bash:
+```bash
+export AWS_ACCESS_KEY_ID="ASIAXXXXXXXXXXXXXXXX"
+export AWS_SECRET_ACCESS_KEY="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+export AWS_SESSION_TOKEN="IQoJb3JpZ2luX2VjEPH//////////..."
+export AWS_DEFAULT_REGION="us-east-1"
+```
+
+#### 3. Atau Simpan ke File Kredensial Lokal:
+Buat atau perbarui file `~/.aws/credentials`:
+```ini
+[default]
+aws_access_key_id = ASIAXXXXXXXXXXXXXXXX
+aws_secret_access_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+aws_session_token = IQoJb3JpZ2luX2VjEPH//////////...
+region = us-east-1
+```
+
+> [!WARNING]
+> Kredensial sesi lab akan kedaluwarsa setelah sesi lab di-restart atau setelah 4 jam. Jika di tengah pekerjaan Terraform Anda menemui error `ExpiredToken`, ulangi langkah di atas dengan menyalin kredensial terbaru dari panel **AWS Details**.
 
 ---
 
-## 4. Konfigurasi Notifikasi Laporan (Amazon SES & Amazon SNS)
+### C. Verifikasi Akses AWS CLI
 
-Di akun AWS standar, Amazon SES dapat digunakan setelah verifikasi identitas email. Di **AWS Academy Learner Lab**, notifikasi otomatis diarahkan melalui **Amazon SNS**:
-
-### Alur Kerja Notifikasi:
-1. Terraform membuat topik **Amazon SNS** (`kopdes-economic-reports-topic`) dan langganan email (`aws_sns_topic_subscription`) ke email `ses_recipient_email`.
-2. Saat `terraform apply` selesai, AWS SNS mengirim email verifikasi bertajuk **"AWS Notification - Subscription Confirmation"** ke inbox email tujuan.
-3. Buka email tersebut lalu klik tautan **Confirm subscription**.
-4. Saat tombol **"Kirim via Email"** ditekan di dashboard aplikasi KopDes, sistem mempublikasikan laporan ke topik SNS, dan Amazon SNS mendistribusikan email laporan ke seluruh pelanggan terdaftar.
-
----
-
-## 5. Kustomisasi Variabel Terraform
-
-Salin template variabel lingkungan:
+Jalankan perintah ini untuk memastikan kredensial telah aktif dan terbaca:
 
 ```bash
-cd terraform
+aws sts get-caller-identity
+```
+
+Output yang benar akan menampilkan identitas akun lab:
+```json
+{
+    "UserId": "AROA...:voclabs",
+    "Account": "123456789012",
+    "Arn": "arn:aws:sts::123456789012:assumed-role/LabRole/voclabs"
+}
+```
+
+---
+
+### D. Mengunduh EC2 Key Pair Bawaan ('vockey')
+
+Di AWS Academy Learner Lab, Anda **tidak perlu** membuat key pair baru. AWS Academy secara default telah menyediakan key pair bernama **`vockey`** di region `us-east-1`.
+
+1. Pada panel **AWS Details** yang sama di konsol lab, cari bagian **SSH Key**.
+2. Klik tautan unduh **Download PEM** (file akan bernama `labsuser.pem`).
+3. Pindahkan file tersebut ke folder SSH workstation Anda dan amankan permission-nya:
+   ```bash
+   # Di Linux / macOS / WSL / Git Bash:
+   mkdir -p ~/.ssh
+   mv ~/Downloads/labsuser.pem ~/.ssh/labsuser.pem
+   chmod 400 ~/.ssh/labsuser.pem
+   ```
+4. Key pair ini nantinya otomatis dihubungkan ke seluruh instance EC2 yang dibuat oleh Auto Scaling Group melalui parameter `key_name = "vockey"`.
+
+---
+
+## 3. Karakteristik & Kebijakan Khusus AWS Academy Learner Lab
+
+Infrastruktur ini telah didesain khusus agar **100% kompatibel** dengan aturan dan limitasi AWS Academy Learner Lab:
+
+1. **Kebijakan IAM (No Create Role)**:
+   - Akun mahasiswa dilarang mengeksekusi `iam:CreateRole` atau `iam:CreateInstanceProfile` oleh SCP (*Service Control Policy*).
+   - **Solusi**: Konfigurasi Terraform menyertakan opsi `use_aws_academy = true`. Terraform tidak akan mencoba membuat role baru, melainkan langsung menggunakan IAM Role bawaan lab: **`LabRole`** dan Instance Profile **`LabInstanceProfile`**.
+2. **Kuota Elastic IP (Maksimum 1 EIP)**:
+   - AWS Academy hanya memberikan kuota **tepat 1 Elastic IP per akun**.
+   - **Solusi**: Konfigurasi jaringan disetel ke `single_nat_gateway = true`. Seluruh private subnet merutekan trafik keluar melalui 1 NAT Gateway di Public Subnet AZ-a, sehingga pemakaian Elastic IP tepat 1 unit dan tidak melebihi kuota.
+3. **Pemberhentian Layanan CloudWatch**:
+   - Untuk menghemat alokasi biaya lab dan mencegah error izin policy, resource CloudWatch Log Group telah dihapus total. Pemantauan log dilakukan secara aman pada level instance melalui file `/var/log/user-data.log` dan systemd journal.
+4. **Amazon SES Dihapus $\rightarrow$ Digantikan Amazon SNS**:
+   - Amazon Simple Email Service (SES) diblokir oleh SCP di AWS Academy dan membutuhkan proses *sandbox unban* yang tidak diizinkan untuk akun mahasiswa.
+   - **Solusi**: Laporan ekonomi wilayah menggunakan **Amazon SNS (Simple Notification Service)** yang didukung penuh oleh `LabRole` dan otomatis mengirimkan email ke inbox subscriber.
+5. **Kunci Region Target**:
+   - Seluruh konfigurasi resource dan AMI dikunci secara presisi pada region **`us-east-1`** (N. Virginia), sesuai dengan region resmi AWS Academy Learner Lab.
+6. **Optimasi Anggaran Lab ($100 Credit Limit)**:
+   - Menggunakan Single-AZ RDS MySQL (`db.t4g.micro`), EC2 `t3.micro`, dan auto termination saat sesi lab selesai agar kredit lab Anda tetap hemat dan aman.
+
+---
+
+## 4. Mekanisme Notifikasi Laporan via Amazon SNS (Bebas dari SES)
+
+Sistem notifikasi laporan ekonomi desa menggunakan **Amazon Simple Notification Service (SNS)**:
+
+```
+[Web App KopDes (EC2 / ASG)]
+           │
+           │ (REST API SigV4 via IMDSv2 Role: LabRole)
+           ▼
+[Amazon SNS Topic: kopdes-economic-reports-topic]
+           │
+           │ (Email Dispatch Protocol)
+           ▼
+[Email Administrator: sns_recipient_email]
+```
+
+### Keunggulan Alur Amazon SNS:
+1. **Didukung 100% di AWS Academy**: IAM Role bawaan `LabRole` memiliki izin penuh untuk mempublikasikan pesan ke Amazon SNS (`sns:Publish`).
+2. **Tanpa Perlu Domain Sendiri**: Tidak memerlukan DNS verification, MX record, atau DKIM.
+3. **Konfirmasi Langganan Otomatis**:
+   - Saat `terraform apply` dijalankan, Terraform mendaftarkan email Anda (`sns_recipient_email`) ke topik SNS.
+   - AWS SNS mengirim email verifikasi bertajuk **"AWS Notification - Subscription Confirmation"**.
+   - Anda cukup membuka email tersebut dan mengklik tautan **Confirm subscription**.
+   - Setelah statusnya terkonfirmasi, setiap kali pengurus desa mengklik tombol **"Kirim via Email (SNS)"** di dashboard, laporan rekapitulasi ekonomi langsung terdistribusi ke email Anda.
+
+---
+
+## 5. Kloning Repositori & Kustomisasi Variabel Terraform
+
+### A. Clone Repositori IaC
+Buka terminal Anda dan clone repositori otomasi infrastruktur:
+
+```bash
+git clone https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git
+cd terraform-ansible-automated-lab/terraform
+```
+
+---
+
+### B. Menyiapkan File Variabel (`terraform.tfvars`)
+Salin file template `terraform.tfvars.example` menjadi `terraform.tfvars`:
+
+```bash
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-Edit file `terraform/terraform.tfvars` dan sesuaikan parameter berikut:
+Buka file `terraform.tfvars` dengan text editor (misal VS Code, Notepad, atau Nano), lalu periksa parameternya:
 
 ```hcl
+# ==============================================================================
+# KopDes Merah Putih - AWS Academy Learner Lab Configuration
+# ==============================================================================
+
 aws_region   = "us-east-1"
-project_name = "kopdes-merah-putih"
-environment  = "lab"
+project_name = "kopdes"
+environment  = "production"
 
-# Konfigurasi Jaringan VPC
-vpc_cidr             = "10.0.0.0/16"
-public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
-private_app_subnets  = ["10.0.10.0/24", "10.0.11.0/24"]
-private_db_subnets   = ["10.0.20.0/24", "10.0.21.0/24"]
-
-# Efisiensi Biaya Lab & Kuota AWS Academy (1 EIP):
-single_nat_gateway   = true
-
-# Mode Khusus AWS Academy Learner Lab:
-use_aws_academy              = true
+# AWS Academy Compatibility Mode (Wajib true untuk Learner Lab)
+use_aws_academy               = true
 academy_instance_profile_name = "LabInstanceProfile"
 
-# Kapasitas Auto Scaling Group & Key Pair
+# Jaringan VPC (Multi-AZ di us-east-1a dan us-east-1b)
+vpc_cidr                 = "10.0.0.0/16"
+public_subnet_cidrs      = ["10.0.1.0/24", "10.0.2.0/24"]
+private_app_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24"]
+private_db_subnet_cidrs  = ["10.0.21.0/24", "10.0.22.0/24"]
+
+# Efisiensi Kuota AWS Academy: Tepat 1 Elastic IP untuk 1 NAT Gateway
+single_nat_gateway       = true
+
+# Compute Tier (EC2 Auto Scaling Group)
 instance_type        = "t3.micro"
-key_name             = "vockey" # Key Pair bawaan AWS Academy Learner Lab
+key_name             = "vockey" # EC2 Key Pair bawaan AWS Academy
 asg_min_size         = 2
-asg_desired_capacity = 2
 asg_max_size         = 4
+asg_desired_capacity = 2
 
-# Konfigurasi Amazon RDS (Single-AZ untuk menghemat saldo lab)
-rds_instance_class   = "db.t4g.micro"
-rds_allocated_storage = 20
-rds_db_name          = "kopdes"
-rds_db_username      = "kopdes_admin"
-rds_multi_az         = false
+# Database Tier (Amazon RDS MySQL)
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20
+db_multi_az          = false # Wajib false untuk efisiensi lab
+db_name              = "kopdes"
+db_username          = "kopdes_admin"
 
-# Konfigurasi Notifikasi Laporan (Amazon SNS - 100% AWS Academy Ready)
-sns_recipient_email  = "email_anda@domain.com" # Ganti dengan email Anda
+# Notifikasi Laporan via Amazon SNS (Ganti dengan email aktif Anda)
+sns_recipient_email  = "email_anda@gmail.com"
 
-# Storage Opsional
+# Storage Eksternal
 enable_s3_storage    = false
+
+# Alamat Repositori GitHub
+git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
+iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git"
 ```
+
+> [!IMPORTANT]
+> Pastikan Anda mengganti nilai `sns_recipient_email` dengan alamat email Anda yang valid agar Anda dapat menerima email konfirmasi langganan dan email laporan.
 
 ---
 
-## 6. Urutan Provisioning Terraform
+## 6. Urutan Provisioning Infrastruktur (Terraform)
 
-Jalankan perintah berikut di dalam direktori `terraform/`:
+Jalankan perintah berikut secara berurutan di dalam direktori `terraform/`:
 
-### A. Validasi Statis Kode
+### A. Inisialisasi Provider AWS
+Mengunduh provider AWS dan HashiCorp Random:
 ```bash
-# Periksa formatting
-terraform fmt -check
-
-# Inisialisasi provider AWS
 terraform init
-
-# Validasi sintaks deklarasi resource
-terraform validate
 ```
 
-### B. Pratinjau Perubahan (Dry-Run Plan)
+### B. Validasi Kode Terraform
+Memastikan seluruh sintaks, struktur blok, dan referensi resource valid:
+```bash
+terraform validate
+```
+*Output yang diharapkan:* `Success! The configuration is valid.`
+
+### C. Pratinjau Perubahan (Dry-Run Plan)
+Melihat daftar 32+ resource cloud yang akan dibuat:
 ```bash
 terraform plan -out=tfplan
 ```
-Periksa kembali daftar resource yang akan dibuat:
-- 1 VPC + 1 Internet Gateway + 1 NAT Gateway + 6 Subnet (2 Public, 2 Private App, 2 Private DB)
-- 3 Security Groups (ALB, EC2, RDS)
-- 1 RDS Instance MySQL + 1 DB Subnet Group + 1 AWS Secrets Manager Secret
-- 1 IAM Role + Instance Profile (SES + SSM)
-- 1 Application Load Balancer + 1 Target Group + 1 HTTP Listener
-- 1 Launch Template + 1 Auto Scaling Group
 
-### C. Menerapkan Infrastruktur (Apply)
-> [!IMPORTANT]
-> Hanya jalankan perintah ini jika Anda telah siap membuat resource cloud di akun AWS Anda.
-
+### D. Terapkan Infrastruktur (Apply)
+Eksekusi pembuatan infrastruktur cloud secara otomatis:
 ```bash
 terraform apply "tfplan"
 ```
 
-Setelah selesai (~8-12 menit untuk pembuatan RDS), Terraform akan mencetak output:
+> [!NOTE]
+> Proses provisioning membutuhkan waktu sekitar **8 hingga 12 menit**, terutama saat pembuatan Amazon RDS MySQL Instance. Biarkan proses berjalan hingga selesai.
+
+### E. Output Informasi Infrastruktur
+Setelah selesai, Terraform akan menampilkan output seperti berikut:
 
 ```text
-Apply complete! Resources: 38 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 34 added, 0 changed, 0 destroyed.
 
 Outputs:
-alb_dns_name = "kopdes-alb-123456789.us-east-1.elb.amazonaws.com"
-asg_name = "kopdes-merah-putih-web-asg"
-rds_endpoint = "kopdes-merah-putih-rds.c3xxxxxx.us-east-1.rds.amazonaws.com:3306"
-vpc_id = "vpc-0abc123456789def0"
+alb_dns_name = "http://kopdes-alb-123456789.us-east-1.elb.amazonaws.com"
+asg_name = "kopdes-asg-xxxxxxxx"
+rds_endpoint = "kopdes-rds-mysql.cxxxxxx.us-east-1.rds.amazonaws.com:3306"
+sns_topic_arn = "arn:aws:sns:us-east-1:123456789012:kopdes-economic-reports-topic"
+vpc_id = "vpc-0123456789abcdef0"
 ```
 
 ---
 
-## 7. Mekanisme Bootstrap Otomatis Instance EC2 (ASG)
+## 7. Mekanisme Bootstrap Otomatis EC2 (Cloud-Init & Ansible)
 
-Setiap instance yang diluncurkan oleh ASG akan menjalankan `user_data.sh.tftpl`:
-1. Sistem operasi Amazon Linux 2023 memperbarui paket dan menginstal `git`, `python3`, dan `ansible-core`.
-2. Repositori di-clone ke `/opt/kopdes`.
-3. Ansible dijalankan secara lokal:
+Setiap kali instance EC2 baru diluncurkan oleh Auto Scaling Group, skrip template `user_data.sh.tftpl` akan dieksekusi secara otomatis:
+
+1. **Pembaruan OS**: Memperbarui paket sistem operasi **Amazon Linux 2023** dan menginstal `git`, `python3`, `jq`, `awscli`, dan `ansible-core`.
+2. **Kloning Repositori**:
+   - Meng-clone repositori IaC (`terraform-ansible-automated-lab`) ke folder `/opt/kopdes-iac`.
+   - Meng-clone repositori Web Application (`kopdes-iac-automationAWS`) ke folder `/var/www/kopdes`.
+3. **Eksekusi Ansible Lokal**:
+   Ansible dijalankan secara lokal pada node untuk mengonfigurasi webserver:
    ```bash
-   ansible-playbook -i "localhost," -c local /opt/kopdes/ansible/playbook_app.yml
+   ansible-playbook -i "localhost," -c local /opt/kopdes-iac/ansible/playbook_app.yml ...
    ```
-4. Ansible mengonfigurasi pool `php-fpm` (Unix socket `/run/php-fpm/www.sock`), virtual host Nginx port 80, file `.env` dengan kredensial RDS dari Terraform, dan menyalakan systemd service.
-5. Skrip mengeksekusi migrasi database ke Amazon RDS secara idempotent.
+   - Menginstal Nginx dan PHP 8.2 (dengan ekstensi `pdo_mysql`, `curl`, `mbstring`, `zip`).
+   - Mengonfigurasi Unix domain socket PHP-FPM (`/run/php-fpm/www.sock`).
+   - Menghasilkan file konfigurasi `.env` berisi endpoint RDS, ALB DNS, dan ARN SNS Topic.
+   - Mengonfigurasi virtual host Nginx port 80 dan mengaktifkan systemd service.
+4. **Migrasi Database**: Menjalankan skrip inisialisasi tabel dan data seed ke Amazon RDS.
 
-### Cara Memantau Log Bootstrap:
-Jika Anda terhubung via AWS SSM Session Manager atau Bastion Host:
+### Cara Memantau Log Bootstrap (Opsional):
+Jika Anda terhubung ke instance via SSH (menggunakan `labsuser.pem`) atau AWS Systems Manager:
 ```bash
-# Pantau log user-data secara real-time
 tail -f /var/log/user-data.log
-
-# Cek status service Nginx & PHP-FPM
-systemctl status nginx
-systemctl status php-fpm
 ```
 
 ---
 
 ## 8. Inisialisasi dan Validasi Database Amazon RDS
 
-Mekanisme inisialisasi database terpusat di `database/init.php`:
-1. Skrip secara otomatis dieksekusi saat bootstrap instance pertama.
-2. Skrip membaca koneksi dari environment `.env` (`DB_HOST`, `DB_USER`, `DB_PASS`).
-3. Mengimpor `database/schema.sql` (tabel `users`, `kopdes`, `memberships`, `products`, `transactions`, `audit_logs`).
-4. Mengimpor `database/seed.sql` berisi 15 akun pengguna demo, 15 unit KopDes wilayah Banyumas, produk, dan transaksi.
-5. Karena menggunakan sintaks `INSERT IGNORE`, skrip bersifat **100% idempotent** dan aman dijalankan ulang.
+Database Amazon RDS diinisialisasi secara otomatis saat bootstrap instance pertama melalui `database/init.php`:
+
+1. Skrip membaca kredensial database dari file `.env` yang di-generate oleh Ansible.
+2. Mengimpor skema tabel (`users`, `kopdes`, `memberships`, `products`, `transactions`, `audit_logs`).
+3. Mengimpor data awal (seed data) yang mencakup:
+   - 1 akun Kepala Wilayah (**HEAD_GOV**).
+   - 15 akun pengelola koperasi desa default (**MANAGER**).
+   - 1 akun warga (**CITIZEN**).
+   - 15 unit KopDes wilayah Kabupaten Banyumas lengkap dengan koordinat geolokasi.
+4. Menggunakan klausa `INSERT IGNORE` sehingga **100% idempotent** dan aman meskipun dijalankan oleh beberapa instance EC2 secara bersamaan.
 
 ---
 
-## 9. Pengujian Akses Aplikasi Melalui ALB
+## 9. Pengujian Akses Aplikasi Melalui Application Load Balancer
 
-Buka browser dan akses alamat DNS yang tercantum di output `alb_dns_name`:
+1. Buka browser web favorit Anda (Chrome, Firefox, Edge, Safari).
+2. Salin nilai output `alb_dns_name` yang dihasilkan oleh Terraform, contoh:
+   ```text
+   http://kopdes-alb-123456789.us-east-1.elb.amazonaws.com
+   ```
+3. Anda akan disambut oleh halaman login KopDes Merah Putih dengan animasi transisi yang mulus.
 
-```text
-http://<alb_dns_name>/
-```
+### Kredensial Akun Pengujian:
 
-### Akun Uji Coba Default:
-1. **Kepala Wilayah (Administrator)**:
-   - Email: `head@gov.local`
-   - Password: `password123`
-   - Fitur: Laporan ekonomi wilayah, pemantauan status cluster AWS Native (ALB, ASG, RDS), dan pengiriman email laporan via SES/SNS.
-2. **Pengelola Unit Koperasi (Manager)**:
-   - Email: `manager@gov.local` s.d. `manager15@gov.local`
-   - Password: `password123`
-   - Fitur: Kasir POS, stok produk desa, pendaftaran warga.
-3. **Warga Desa (Citizen)**:
-   - Email: `citizen@gov.local` (atau register baru)
-   - Password: `password123`
-   - Fitur: Katalog komoditas, belanja online desa.
+| Role Pengguna | Alamat Email | Password | Hak Akses Utama |
+| :--- | :--- | :--- | :--- |
+| **Kepala Wilayah (HEAD_GOV)** | `head@gov.local` | `password123` | Dashboard agregat wilayah, peta sebaran 15 KopDes, pemantauan cluster ALB/ASG/RDS, pengiriman laporan SNS. |
+| **Pengelola Koperasi (MANAGER)** | `manager@gov.local` s.d. `manager15@gov.local` | `password123` | Manajemen kasir (POS), stok komoditas desa, transaksi anggota. |
+| **Warga Desa (CITIZEN)** | `citizen@gov.local` | `password123` | Katalog produk desa, keranjang belanja, checkout transaksi. |
 
 ---
 
-## 10. Pengujian Auto Scaling, Health Check, dan Self-Healing
+## 10. Pengujian Auto Scaling, Target Group Health Check, & Self-Healing
 
-### A. Pengujian Target Group Health Check
-Di AWS Console (EC2 > Target Groups) atau via AWS CLI:
+### A. Memeriksa Status Kesehatan Target Group
+Di AWS Console $\rightarrow$ Buka layanan **EC2** $\rightarrow$ **Target Groups** $\rightarrow$ Pilih `kopdes-tg`:
+* Periksa tab **Targets**.
+* Pastikan seluruh instance EC2 (2 unit) berstatus **Healthy** pada port 80 dengan path `/index.php?page=login`.
+
+Atau via AWS CLI:
 ```bash
 aws elbv2 describe-target-health \
-  --target-group-arn <TARGET_GROUP_ARN> \
+  --target-group-arn $(aws elbv2 describe-target-groups --names kopdes-tg --query 'TargetGroups[0].TargetGroupArn' --output text) \
   --region us-east-1
 ```
-Pastikan kedua target berada dalam kondisi **healthy** (HTTP 200 pada `/index.php?page=login`).
 
-### B. Simulasi Kegagalan Instance (Self-Healing Test)
-1. Matikan (terminate) salah satu instance EC2 yang sedang berjalan di ASG:
+---
+
+### B. Simulasi Kegagalan Instance (Uji Self-Healing)
+
+1. Ambil salah satu Instance ID dari instance yang sedang berjalan:
+   ```bash
+   aws ec2 describe-instances \
+     --filters "Name=tag:Name,Values=kopdes-webserver" "Name=instance-state-name,Values=running" \
+     --query 'Reservations[*].Instances[*].InstanceId' \
+     --output text
+   ```
+2. Hentikan/matikan instance tersebut untuk mensimulasikan kegagalan server:
    ```bash
    aws ec2 terminate-instances --instance-ids <INSTANCE_ID> --region us-east-1
    ```
-2. Amati Application Load Balancer:
-   - ALB mendeteksi instance yang mati dan menghentikan rute trafik ke instance tersebut tanpa *downtime* bagi pengguna.
-3. Amati Auto Scaling Group:
-   - ASG mendeteksi bahwa jumlah instance aktif berkurang di bawah *desired capacity* (2).
-   - ASG secara otomatis meluncurkan instance EC2 baru.
-   - Instance baru mengeksekusi bootstrap cloud-init dan Ansible secara lokal.
-   - Dalam ~2-3 menit, instance baru otomatis bergabung ke Target Group dan berstatus *healthy*.
+3. Amati perilaku sistem:
+   - **Application Load Balancer**: Mendeteksi instance gagal dalam 30 detik (*unhealthy threshold*) dan otomatis mengalihkan 100% trafik ke instance sehat lainnya tanpa gangguan bagi pengguna.
+   - **Auto Scaling Group**: Mendeteksi kapasitas aktif berkurang di bawah *desired capacity* (2 unit) $\rightarrow$ ASG secara otomatis meluncurkan instance EC2 baru $\rightarrow$ Cloud-init dan Ansible otomatis men-setup instance baru tersebut $\rightarrow$ Dalam 2–3 menit, instance baru bergabung ke Target Group dan berstatus *healthy*.
 
 ---
 
-## 11. Pengujian Fitur Pengiriman Laporan via Amazon SES / SNS
+## 11. Pengujian Pengiriman Laporan Ekonomi via Amazon SNS
 
-1. Login sebagai Kepala Wilayah: `head@gov.local` / `password123`.
-2. Buka menu **Laporan Ekonomi** (`pages/headgov/reports.php`).
-3. Pada kartu laporan atau tombol tindakan, klik **"Kirim via Email (SNS)"**.
-4. Sistem akan:
-   - Memanggil `includes/ses_mailer.php` (didukung alias `SnsMailer` / `NotificationService`).
-   - Mengambil kredensial dinamis dari IAM Instance Profile via IMDSv2.
-   - Mempublikasikan email ringkasan omzet, surplus usaha, dan transaksi aktif ke topik Amazon SNS (`kopdes-economic-reports-topic`).
-   - Amazon SNS langsung mendistribusikan email laporan ke `sns_recipient_email`.
-   - Menampilkan notifikasi sukses di antarmuka web.
-5. Buka kotak masuk email tujuan untuk melihat format laporan yang diterima.
+### Langkah 1: Konfirmasi Berlangganan Email (Subscription Confirmation)
+1. Buka kotak masuk (*inbox*) email yang Anda daftarkan pada `sns_recipient_email`.
+2. Cari email dari **AWS Notifications** dengan subjek **"AWS Notification - Subscription Confirmation"**.
+3. Buka email tersebut dan klik tautan **Confirm subscription**.
+4. Browser Anda akan menampilkan konfirmasi: *"Subscription confirmed!"*.
 
 ---
 
-## 12. Manajemen Biaya dan Prosedur Teardown (Cleanup)
+### Langkah 2: Kirim Laporan dari Dashboard Web
+1. Buka URL aplikasi KopDes di browser Anda.
+2. Login menggunakan akun Kepala Wilayah:
+   - Email: `head@gov.local`
+   - Password: `password123`
+3. Masuk ke menu **Laporan Ekonomi** (`index.php?page=reports`).
+4. Di bagian pojok kanan atas tabel laporan, klik tombol **"Kirim via Email (SNS)"**.
+5. Antarmuka web akan menampilkan pesan notifikasi hijau:
+   > *"Rekapitulasi laporan ekonomi berhasil dikirim ke email_anda@gmail.com via Amazon SNS."*
+6. Buka kembali inbox email Anda. Anda akan menerima email berformat rapi berisi rekapitulasi total omzet, total transaksi selesai, jumlah anggota aktif, dan rincian unit koperasi desa.
 
-### Tips Menghemat Biaya Selama Pengujian:
-- Gunakan Single-AZ RDS (`rds_multi_az = false`).
-- Gunakan Single NAT Gateway (`single_nat_gateway = true`).
-- Hancurkan infrastruktur jika sesi belajar/pengujian telah selesai.
+---
 
-### Prosedur Penghancuran (Teardown):
+## 12. Manajemen Saldo Lab & Prosedur Teardown (Cleanup)
+
+Untuk menjaga agar kredit $100 pada AWS Academy Learner Lab tidak habis saat Anda tidak sedang menggunakan aplikasi, lakukan pembersihan resource secara berkala.
+
+### Prosedur Penghancuran Infrastruktur:
+
+Jalankan perintah ini di dalam direktori `terraform/`:
 
 ```bash
-cd terraform
+cd terraform-ansible-automated-lab/terraform
 terraform destroy
 ```
 
-Ketik `yes` saat konfirmasi diminta. Seluruh resource (VPC, NAT Gateway, ALB, ASG, EC2, RDS, SNS Topic, dan Secrets Manager) akan dihapus secara bersih sehingga tagihan AWS berhenti berjalan.
+1. Terraform akan menampilkan daftar seluruh resource yang akan dihapus.
+2. Saat muncul konfirmasi:
+   ```text
+   Do you really want to destroy all resources?
+     Terraform will destroy all your managed infrastructure, as shown above.
+     There is no undo. Only 'yes' will be accepted to confirm.
+
+     Enter a value:
+   ```
+3. Ketik **`yes`** lalu tekan Enter.
+4. Terraform akan menghapus seluruh resource (ALB, Target Group, Auto Scaling Group, EC2 instances, RDS MySQL, Secrets Manager secret, SNS Topic & Subscription, NAT Gateway, Elastic IP, dan VPC) dalam waktu sekitar 3–5 menit.
+5. Setelah selesai, muncul pesan:
+   ```text
+   Destroy complete! Resources: 34 destroyed.
+   ```
+6. Buka panel AWS Academy Learner Lab dan klik tombol **End Lab** untuk menghentikan penghitungan waktu sesi lab.
