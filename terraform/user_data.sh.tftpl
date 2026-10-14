@@ -68,11 +68,7 @@ ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" \
                 sns_recipient_email=$SNS_RECIPIENT \
                 sns_topic_arn=$SNS_TOPIC_ARN"
 
-# 7. Jalankan inisialisasi database schema & seed ke Amazon RDS secara idempotent
-echo "[INFO] Menginisialisasi skema & dummy seed ke Amazon RDS ($DB_HOST)..."
-php /var/www/kopdes/database/init.php || true
-
-# 8. Pastikan Nginx dan PHP-FPM aktif dan berjalan
+# 7. Pastikan Nginx dan PHP-FPM aktif dan berjalan
 systemctl daemon-reload
 PHP_FPM_SVC=$(systemctl list-unit-files | grep -oE "php[0-9.]*-fpm" | head -n 1 || echo "php-fpm")
 systemctl enable --now "$PHP_FPM_SVC" || true

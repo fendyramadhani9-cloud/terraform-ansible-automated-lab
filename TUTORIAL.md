@@ -404,16 +404,22 @@ tail -f /var/log/user-data.log
 
 ## 8. Inisialisasi dan Validasi Database Amazon RDS
 
-Database Amazon RDS diinisialisasi secara otomatis saat bootstrap instance pertama melalui `database/init.php`:
+Inisialisasi database Amazon RDS dipisahkan dari proses bootstrap EC2 web server agar integritas data transaksi produksi terjamin dan tidak tereset saat terjadi *scale-out* atau *self-healing* ASG.
 
-1. Skrip membaca kredensial database dari file `.env` yang di-generate oleh Ansible.
-2. Mengimpor skema tabel (`users`, `kopdes`, `memberships`, `products`, `transactions`, `audit_logs`).
+Jalankan inisialisasi skema & seed awal satu kali menggunakan playbook khusus:
+```bash
+ansible-playbook -i ansible/inventory.ini ansible/playbook_db_init.yml
+```
+
+Skrip inisialisasi akan:
+1. Membaca kredensial database dari file `.env` yang di-generate oleh Ansible pada node web.
+2. Mengimpor skema tabel (`users`, `kopdes`, `memberships`, `products`, `transactions`).
 3. Mengimpor data awal (seed data) yang mencakup:
    - 1 akun Kepala Wilayah (**HEAD_GOV**).
    - 15 akun pengelola koperasi desa default (**MANAGER**).
    - 1 akun warga (**CITIZEN**).
    - 15 unit KopDes wilayah Kabupaten Banyumas lengkap dengan koordinat geolokasi.
-4. Menggunakan klausa `INSERT IGNORE` sehingga **100% idempotent** dan aman meskipun dijalankan oleh beberapa instance EC2 secara bersamaan.
+4. Menjaga agar bootstrap instance ASG baru bersifat murni *stateless* tanpa risiko mereset data.
 
 ---
 

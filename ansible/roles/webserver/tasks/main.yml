@@ -169,15 +169,7 @@
     state: started
     enabled: true
 
-# 7. Migrasi Database ke Amazon RDS
-- name: Inisialisasi skema dan seed data database ke Amazon RDS secara idempotent
-  ansible.builtin.command:
-    cmd: "php {{ app_dest_dir }}/database/init.php"
-  register: db_init_output
-  changed_when: "'selesai dengan sukses' in db_init_output.stdout or 'Berhasil' in db_init_output.stdout"
-  failed_when: false
-
-# 8. Verifikasi Respon HTTP Lokal
+# 7. Verifikasi Respon HTTP Lokal
 - name: "Verifikasi respon HTTP lokal node web (Health Check: http://127.0.0.1/)"
   ansible.builtin.uri:
     url: "http://127.0.0.1/index.php?page=login"

@@ -1,0 +1,20 @@
+---
+# ==============================================================================
+# ANSIBLE PLAYBOOK: KOPDES ONE-TIME DATABASE INITIALIZATION
+# ==============================================================================
+# Playbook ini dijalankan HANYA SATU KALI oleh operator atau pipeline deployment
+# saat infrastruktur Amazon RDS pertama kali selesai dibuat.
+#
+# Dijalankan secara terisolasi HANYA pada 1 node EC2 pertama (webservers[0])
+# guna mencegah race condition dan menjamin bootstrap ASG bebas dari operasi destruktif:
+#
+#   ansible-playbook -i inventory.ini ansible/playbook_db_init.yml
+# ==============================================================================
+
+- name: Inisialisasi Skema dan Seed Awal Amazon RDS KopDes (One-Time Run)
+  hosts: webservers[0]
+  become: true
+  gather_facts: false
+
+  roles:
+    - database
