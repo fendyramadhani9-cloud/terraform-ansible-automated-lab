@@ -30,6 +30,7 @@ asg_max_size         = 4
 asg_desired_capacity = 2
 
 # Database (Amazon RDS MySQL)
+db_engine_version     = "8.4" # MySQL 8.4 LTS (Mendukung LTS dan bebas dari biaya Extended Support 8.0)
 db_instance_class     = "db.t4g.micro"
 db_allocated_storage  = 20
 db_multi_az           = false # Set true untuk Multi-AZ failover di production

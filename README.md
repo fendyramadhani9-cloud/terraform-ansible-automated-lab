@@ -86,7 +86,7 @@ flowchart TD
 | **Security Groups** | ALB SG (Port 80) $\rightarrow$ EC2 SG (Port 80 dari ALB) $\rightarrow$ RDS SG (Port 3306 dari EC2). |
 | **Load Balancer** | Application Load Balancer dengan Target Group `/index.php?page=login` dan stickiness `lb_cookie` 86400 detik. |
 | **Compute (ASG)** | Launch Template Ubuntu 24.04 LTS (Noble Numbat), instance type `t3.micro`, kapasitas 2 s.d. 4 instance. |
-| **Database (RDS)** | Amazon RDS MySQL 8.0 (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default. |
+| **Database (RDS)** | Amazon RDS MySQL 8.4 LTS (`db.t4g.micro`), backup 7 hari, KMS encryption, single-AZ default. |
 | **Secrets Manager** | Menyimpan password master database secara acak tanpa hardcoded string di source code. |
 | **IAM Profile** | Mendukung `LabInstanceProfile` AWS Academy Learner Lab dan AWS Systems Manager ke EC2. |
 | **Amazon SNS** | Topik notifikasi rekapitulasi laporan ekonomi dan email subscription (didukung penuh di AWS Academy). |

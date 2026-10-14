@@ -323,10 +323,11 @@ resource "aws_db_instance" "rds" {
   db_subnet_group_name   = aws_db_subnet_group.rds_subnets.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
-  backup_retention_period    = 7
-  skip_final_snapshot        = true
-  deletion_protection        = false
-  auto_minor_version_upgrade = true
+  backup_retention_period     = 7
+  skip_final_snapshot         = true
+  deletion_protection         = false
+  auto_minor_version_upgrade  = true
+  allow_major_version_upgrade = true
 
   tags = {
     Name = "${var.project_name}-rds-mysql"

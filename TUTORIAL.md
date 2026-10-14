@@ -304,7 +304,8 @@ asg_min_size         = 2
 asg_max_size         = 4
 asg_desired_capacity = 2
 
-# Database Tier (Amazon RDS MySQL)
+# Database Tier (Amazon RDS MySQL 8.4 LTS)
+db_engine_version    = "8.4"
 db_instance_class    = "db.t4g.micro"
 db_allocated_storage = 20
 db_multi_az          = false # Wajib false untuk efisiensi lab
