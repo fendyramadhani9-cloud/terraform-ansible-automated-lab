@@ -318,7 +318,7 @@ sns_recipient_email  = "email_anda@gmail.com"
 enable_s3_storage    = false
 
 # Alamat Repositori GitHub
-git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
+git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-landingPAGE.git"
 iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git"
 ```
 
@@ -382,7 +382,7 @@ Setiap kali instance EC2 baru diluncurkan oleh Auto Scaling Group, skrip templat
 1. **Pembaruan OS**: Memperbarui paket sistem operasi **Ubuntu 24.04 LTS (Noble Numbat)** via `apt-get` dan menginstal `git`, `python3`, `jq`, `awscli`, dan `ansible-core`.
 2. **Kloning Repositori**:
    - Meng-clone repositori IaC (`terraform-ansible-automated-lab`) ke folder `/opt/kopdes-iac`.
-   - Meng-clone repositori Web Application (`kopdes-iac-automationAWS`) ke folder `/var/www/kopdes`.
+   - Meng-clone repositori Web Application (`kopdes-landingPAGE`) ke folder `/var/www/kopdes`.
 3. **Eksekusi Ansible Lokal**:
    Ansible dijalankan secara lokal pada node untuk mengonfigurasi webserver:
    ```bash
@@ -390,9 +390,9 @@ Setiap kali instance EC2 baru diluncurkan oleh Auto Scaling Group, skrip templat
    ```
    - Menginstal Nginx dan PHP 8.3 (dengan ekstensi `php-mysql`, `curl`, `mbstring`, `zip`, `xml`, `bcmath`).
    - Mengonfigurasi Unix domain socket PHP-FPM (`/run/php/php-fpm.sock`).
-   - Menghasilkan file konfigurasi `.env` berisi endpoint RDS, ALB DNS, dan ARN SNS Topic.
+   - Menghasilkan file konfigurasi `.env` berisi endpoint RDS, ALB DNS, dan ARN SNS Topic (password diambil aman dari AWS Secrets Manager).
    - Mengonfigurasi virtual host Nginx port 80 dan mengaktifkan systemd service (`php8.3-fpm` dan `nginx`).
-4. **Migrasi Database**: Menjalankan skrip inisialisasi tabel dan data seed ke Amazon RDS.
+4. **Kesiapan Node**: Node langsung siap menerima request HTTP dari ALB secara stateless tanpa menyentuh atau mereset data database. Inisialisasi skema DB dilakukan terpisah secara one-time via `playbook_db_init.yml`.
 
 ### Cara Memantau Log Bootstrap (Opsional):
 Jika Anda terhubung ke instance via SSH (menggunakan `labsuser.pem`) atau AWS Systems Manager:

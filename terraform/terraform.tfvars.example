@@ -44,5 +44,5 @@ sns_recipient_email = "admin@kopdes.id"
 enable_s3_storage = false
 
 # Git Repositories
-git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
+git_repo_url = "https://github.com/fendyramadhani9-cloud/kopdes-landingPAGE.git"
 iac_repo_url = "https://github.com/fendyramadhani9-cloud/terraform-ansible-automated-lab.git"

@@ -104,7 +104,7 @@ variable "asg_desired_capacity" {
 variable "git_repo_url" {
   description = "URL git repository aplikasi KopDes Web Application untuk proses self-bootstrap instance"
   type        = string
-  default     = "https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS.git"
+  default     = "https://github.com/fendyramadhani9-cloud/kopdes-landingPAGE.git"
 }
 
 variable "iac_repo_url" {

@@ -15,7 +15,7 @@ Proyek KopDes Merah Putih menggunakan arsitektur pemisahan *Separation of Concer
    Berisi seluruh kode deklarasi infrastruktur Terraform dan playbook Ansible untuk Ubuntu 24.04 LTS.
 
 2. **Repository Web Application**:  
-   [`https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS`](https://github.com/fendyramadhani9-cloud/kopdes-iac-automationAWS)  
+   [`https://github.com/fendyramadhani9-cloud/kopdes-landingPAGE`](https://github.com/fendyramadhani9-cloud/kopdes-landingPAGE)  
    Berisi murni kode aplikasi web KopDes (PHP 8, HTML, CSS, JavaScript, SQLite/MySQL schema & seed).  
    *Repository ini akan otomatis di-clone oleh instance EC2 saat proses bootstrap berjalan.*
 
@@ -99,7 +99,7 @@ Setiap instance baru yang diluncurkan oleh Auto Scaling Group menjalankan skrip 
 1. Menginstal dependensi OS: `git`, `python3`, `pip`, `jq`, `awscli`.
 2. Menginstal `ansible-core`.
 3. Meng-clone repository IaC ini ke `/opt/kopdes-iac`.
-4. Meng-clone repository Web App (`kopdes-iac-automationAWS`) ke `/var/www/kopdes`.
+4. Meng-clone repository Web App (`kopdes-landingPAGE`) ke `/var/www/kopdes`.
 5. Menjalankan playbook Ansible secara lokal:
    ```bash
    ansible-playbook -i "localhost," -c local /opt/kopdes-iac/ansible/playbook_app.yml ...
