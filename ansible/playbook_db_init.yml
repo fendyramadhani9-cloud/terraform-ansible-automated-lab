@@ -12,7 +12,7 @@
 # ==============================================================================
 
 - name: Inisialisasi Skema dan Seed Awal Amazon RDS KopDes (One-Time Run)
-  hosts: webservers[0]
+  hosts: "{{ target_hosts | default('webservers[0]:localhost') }}"
   become: true
   gather_facts: false
 

@@ -11,14 +11,14 @@
   ansible.builtin.stat:
     path: "{{ app_dest_dir }}/database/init.php"
   register: db_init_file
+  failed_when: not db_init_file.stat.exists
 
 - name: Inisialisasi skema tabel dan seed data awal ke Amazon RDS ({{ db_host }})
   ansible.builtin.command:
     cmd: "php {{ app_dest_dir }}/database/init.php"
   register: rds_init_output
   changed_when: "'selesai dengan sukses' in rds_init_output.stdout or 'Berhasil' in rds_init_output.stdout"
-  failed_when: false
-  when: db_init_file.stat.exists
+  failed_when: rds_init_output.rc != 0
 
 - name: Tampilkan ringkasan inisialisasi Amazon RDS
   ansible.builtin.debug:

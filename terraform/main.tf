@@ -544,7 +544,6 @@ resource "aws_launch_template" "app_lt" {
     db_name        = var.db_name
     db_user        = var.db_username
     db_secret_name = aws_secretsmanager_secret.db_credentials.name
-    db_pass        = local.db_password_final
     aws_region     = var.aws_region
     alb_dns        = aws_lb.alb.dns_name
     sns_recipient  = local.sns_recipient

@@ -46,6 +46,10 @@ cat <<EOF >> "$OUTPUT_FILE"
 [webservers:vars]
 ansible_user=ubuntu
 ansible_ssh_private_key_file=~/.ssh/labsuser.pem
+# Catatan Jaringan: Instance berada di private subnet tanpa public IP.
+# Jika menjalankan Ansible via SSH dari workstation luar VPC, gunakan AWS SSM ProxyCommand:
+# ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"'
+# Atau jalankan inisialisasi praktis tanpa SSH via SSM Run Command: bash ansible/run_db_init_ssm.sh
 ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 ansible_python_interpreter=/usr/bin/python3
 ansible_become=yes
@@ -53,3 +57,5 @@ ansible_become_method=sudo
 EOF
 
 echo "[OK] File inventory berhasil di-generate di $OUTPUT_FILE"
+echo "[TIP] Untuk inisialisasi database di private subnet tanpa perlu SSH, Anda dapat menjalankan:"
+echo "      bash ansible/run_db_init_ssm.sh"

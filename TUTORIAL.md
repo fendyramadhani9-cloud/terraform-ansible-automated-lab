@@ -405,22 +405,27 @@ tail -f /var/log/user-data.log
 
 ## 8. Inisialisasi dan Validasi Database Amazon RDS
 
-Inisialisasi database Amazon RDS dipisahkan dari proses bootstrap EC2 web server agar integritas data transaksi produksi terjamin dan tidak tereset saat terjadi *scale-out* atau *self-healing* ASG.
+Inisialisasi database Amazon RDS dirancang **100% idempotent** dan **concurrency-safe** menggunakan *MySQL Advisory Lock* (`GET_LOCK`), skema `CREATE TABLE IF NOT EXISTS`, dan sinkronisasi seed non-destruktif.
 
-Jalankan inisialisasi skema & seed awal satu kali menggunakan playbook khusus:
+### Opsi A: Otomatis saat Bootstrap EC2 (Zero-Touch)
+Setiap instance EC2 yang diluncurkan oleh Auto Scaling Group akan memeriksa dan menginisialisasi skema secara otomatis jika belum tersedia tanpa menimpa data transaksi atau akun yang sudah dibuat pengguna.
+
+### Opsi B: Eksekusi Manual via AWS Systems Manager (Rekomendasi di AWS Academy)
+Karena instance EC2 berada di *private subnet* tanpa public IP, cara paling andal menjalankan inisialisasi dari komputer lokal Anda (tanpa perlu SSH, VPN, atau Bastion) adalah menggunakan helper AWS SSM:
+
+```bash
+bash ansible/run_db_init_ssm.sh
+```
+
+Skrip ini akan:
+1. Menemukan instance EC2 webserver yang sedang running secara otomatis via AWS CLI.
+2. Mengirim perintah eksekusi `php /var/www/kopdes/database/init.php` melalui **AWS Systems Manager (SSM)**.
+3. Menampilkan status dan log inisialisasi tabel (`users`, `kopdes`, `memberships`, `products`, `transactions`) serta 15 unit KopDes wilayah Banyumas secara transparan.
+
+### Opsi C: Eksekusi via Ansible Playbook (Jika Menggunakan Bastion / SSH SSM Plugin)
 ```bash
 ansible-playbook -i ansible/inventory.ini ansible/playbook_db_init.yml
 ```
-
-Skrip inisialisasi akan:
-1. Membaca kredensial database dari file `.env` yang di-generate oleh Ansible pada node web.
-2. Mengimpor skema tabel (`users`, `kopdes`, `memberships`, `products`, `transactions`).
-3. Mengimpor data awal (seed data) yang mencakup:
-   - 1 akun Kepala Wilayah (**HEAD_GOV**).
-   - 15 akun pengelola koperasi desa default (**MANAGER**).
-   - 1 akun warga (**CITIZEN**).
-   - 15 unit KopDes wilayah Kabupaten Banyumas lengkap dengan koordinat geolokasi.
-4. Menjaga agar bootstrap instance ASG baru bersifat murni *stateless* tanpa risiko mereset data.
 
 ---
 

@@ -5,6 +5,7 @@
 # ==============================================================================
 
 set -euo pipefail
+trap 'echo "[FATAL] $(date) - Bootstrap gagal pada baris $LINENO. Periksa log /var/log/user-data.log untuk detail." >&2' ERR
 exec > >(tee -a /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 
 echo "[INFO] $(date) - Memulai bootstrap instance KopDes Merah Putih di Ubuntu 24.04 LTS..."
@@ -44,29 +45,45 @@ fi
 echo "[INFO] Mengunduh repository KopDes Web dari ${git_repo_url}..."
 git clone "${git_repo_url}" "$APP_DIR"
 
+if [ ! -f "$APP_DIR/public/index.php" ]; then
+    echo "[FATAL] Entry point $APP_DIR/public/index.php tidak ditemukan setelah git clone dari ${git_repo_url}!" >&2
+    exit 1
+fi
+echo "[OK] Source code aplikasi KopDes terverifikasi di $APP_DIR/public/index.php"
+
 # 5. Ambil variabel lingkungan & secret runtime
 DB_HOST="${db_host}"
 DB_NAME="${db_name}"
 DB_USER="${db_user}"
-DB_PASS="${db_pass}"
 AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
 SNS_RECIPIENT="${sns_recipient}"
 SNS_TOPIC_ARN="${sns_topic_arn}"
 SECRET_NAME="${db_secret_name}"
+DB_PASS=""
 
-# Ambil kredensial DB secara aman dari AWS Secrets Manager via IAM role/profile jika tersedia
-if [ -n "$SECRET_NAME" ]; then
-    echo "[INFO] Mengambil kredensial database dari AWS Secrets Manager ($SECRET_NAME)..."
-    SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text 2>/dev/null || true)
-    if [ -n "$SECRET_JSON" ]; then
-        FETCHED_PASS=$(echo "$SECRET_JSON" | jq -r '.password // empty')
-        if [ -n "$FETCHED_PASS" ]; then
-            DB_PASS="$FETCHED_PASS"
-            echo "[INFO] Kredensial database berhasil diambil dari AWS Secrets Manager via IAM role."
-        fi
-    fi
+# Ambil kredensial DB secara aman dari AWS Secrets Manager via IAM role/profile
+if [ -z "$SECRET_NAME" ]; then
+    echo "[FATAL] Variabel db_secret_name kosong! Password database tidak dapat diambil." >&2
+    exit 1
 fi
+
+echo "[INFO] Mengambil kredensial database dari AWS Secrets Manager ($SECRET_NAME) di region $AWS_REGION..."
+SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text 2>/dev/null || true)
+
+if [ -z "$SECRET_JSON" ]; then
+    echo "[FATAL] Gagal mengambil secret dari AWS Secrets Manager ($SECRET_NAME). Pastikan IAM Instance Profile (LabInstanceProfile) memiliki izin 'secretsmanager:GetSecretValue'!" >&2
+    exit 1
+fi
+
+DB_PASS=$(echo "$SECRET_JSON" | jq -r '.password // empty')
+
+if [ -z "$DB_PASS" ]; then
+    echo "[FATAL] Nilai 'password' kosong atau tidak valid dalam payload secret AWS Secrets Manager ($SECRET_NAME)!" >&2
+    exit 1
+fi
+
+echo "[OK] Kredensial database berhasil diambil secara aman dari AWS Secrets Manager via IAM role."
 
 # 6. Jalankan Playbook Ansible secara lokal via file variabel sementara berizin ketat (mencegah eksposur password di process tree & log)
 echo "[INFO] Menyiapkan parameter Ansible secara aman..."
@@ -76,6 +93,7 @@ chmod 0600 "$ANSIBLE_VARS_FILE"
 cat <<EOF > "$ANSIBLE_VARS_FILE"
 {
   "app_dest_dir": "/var/www/kopdes",
+  "app_repo_url": "${git_repo_url}",
   "db_host": "$DB_HOST",
   "db_port": 3306,
   "db_name": "$DB_NAME",
@@ -89,12 +107,22 @@ cat <<EOF > "$ANSIBLE_VARS_FILE"
 EOF
 
 echo "[INFO] Menjalankan Ansible Playbook untuk konfigurasi webserver & runtime PHP..."
-ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" -e "@$ANSIBLE_VARS_FILE"
+if ! ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" -e "@$ANSIBLE_VARS_FILE"; then
+    echo "[FATAL] Eksekusi Ansible Playbook gagal! Periksa output di atas." >&2
+    shred -u "$ANSIBLE_VARS_FILE" 2>/dev/null || rm -f "$ANSIBLE_VARS_FILE"
+    exit 1
+fi
 
 # Hapus file variabel sementara yang berisi secret
 shred -u "$ANSIBLE_VARS_FILE" 2>/dev/null || rm -f "$ANSIBLE_VARS_FILE"
 
-# 7. Pastikan Nginx dan PHP-FPM aktif dan berjalan
+# 7. Inisialisasi skema dan seed Amazon RDS jika belum terinisialisasi (concurrency-safe via MySQL advisory lock)
+echo "[INFO] Memeriksa dan menginisialisasi skema Amazon RDS..."
+if [ -f "$APP_DIR/database/init.php" ]; then
+    php "$APP_DIR/database/init.php" || echo "[WARN] Inisialisasi database otomatis via bootstrap menemui kendala. Inisialisasi dapat dipicu via SSM: bash ansible/run_db_init_ssm.sh."
+fi
+
+# 8. Pastikan Nginx dan PHP-FPM aktif dan berjalan
 systemctl daemon-reload
 PHP_FPM_SVC=$(systemctl list-unit-files | grep -oE "php[0-9.]*-fpm" | head -n 1 || echo "php-fpm")
 systemctl enable --now "$PHP_FPM_SVC" || true
