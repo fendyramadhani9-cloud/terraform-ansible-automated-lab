@@ -8,7 +8,10 @@ regions:
   - us-east-1
 
 filters:
-  tag:Project: kopdes-merah-putih
+  tag:Project:
+    - kopdes
+    - kopdes-merah-putih
+  tag:Role: webserver
   instance-state-name: running
 
 keyed_groups:
@@ -18,7 +21,7 @@ keyed_groups:
     prefix: env
 
 groups:
-  webservers: "'kopdes-web' in tags.Name"
+  webservers: "tags.Role | default('') == 'webserver' or 'web' in tags.Name | default('')"
 
 compose:
   ansible_host: private_ip_address

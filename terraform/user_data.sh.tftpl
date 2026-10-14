@@ -44,7 +44,7 @@ fi
 echo "[INFO] Mengunduh repository KopDes Web dari ${git_repo_url}..."
 git clone "${git_repo_url}" "$APP_DIR"
 
-# 5. Ambil variabel lingkungan
+# 5. Ambil variabel lingkungan & secret runtime
 DB_HOST="${db_host}"
 DB_NAME="${db_name}"
 DB_USER="${db_user}"
@@ -53,20 +53,46 @@ AWS_REGION="${aws_region}"
 ALB_DNS="${alb_dns}"
 SNS_RECIPIENT="${sns_recipient}"
 SNS_TOPIC_ARN="${sns_topic_arn}"
+SECRET_NAME="${db_secret_name}"
 
-# 6. Jalankan Playbook Ansible secara lokal (Local Connection) dari repo IaC
+# Ambil kredensial DB secara aman dari AWS Secrets Manager via IAM role/profile jika tersedia
+if [ -n "$SECRET_NAME" ]; then
+    echo "[INFO] Mengambil kredensial database dari AWS Secrets Manager ($SECRET_NAME)..."
+    SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text 2>/dev/null || true)
+    if [ -n "$SECRET_JSON" ]; then
+        FETCHED_PASS=$(echo "$SECRET_JSON" | jq -r '.password // empty')
+        if [ -n "$FETCHED_PASS" ]; then
+            DB_PASS="$FETCHED_PASS"
+            echo "[INFO] Kredensial database berhasil diambil dari AWS Secrets Manager via IAM role."
+        fi
+    fi
+fi
+
+# 6. Jalankan Playbook Ansible secara lokal via file variabel sementara berizin ketat (mencegah eksposur password di process tree & log)
+echo "[INFO] Menyiapkan parameter Ansible secara aman..."
+ANSIBLE_VARS_FILE=$(mktemp /tmp/ansible_vars_XXXXXX.json)
+chmod 0600 "$ANSIBLE_VARS_FILE"
+
+cat <<EOF > "$ANSIBLE_VARS_FILE"
+{
+  "app_dest_dir": "/var/www/kopdes",
+  "db_host": "$DB_HOST",
+  "db_port": 3306,
+  "db_name": "$DB_NAME",
+  "db_user": "$DB_USER",
+  "db_password": "$DB_PASS",
+  "alb_dns_name": "$ALB_DNS",
+  "aws_region": "$AWS_REGION",
+  "sns_recipient_email": "$SNS_RECIPIENT",
+  "sns_topic_arn": "$SNS_TOPIC_ARN"
+}
+EOF
+
 echo "[INFO] Menjalankan Ansible Playbook untuk konfigurasi webserver & runtime PHP..."
-ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" \
-  --extra-vars "app_dest_dir=/var/www/kopdes \
-                db_host=$DB_HOST \
-                db_port=3306 \
-                db_name=$DB_NAME \
-                db_user=$DB_USER \
-                db_password=$DB_PASS \
-                alb_dns_name=$ALB_DNS \
-                aws_region=$AWS_REGION \
-                sns_recipient_email=$SNS_RECIPIENT \
-                sns_topic_arn=$SNS_TOPIC_ARN"
+ansible-playbook -i "localhost," -c local "$IAC_DIR/ansible/playbook_app.yml" -e "@$ANSIBLE_VARS_FILE"
+
+# Hapus file variabel sementara yang berisi secret
+shred -u "$ANSIBLE_VARS_FILE" 2>/dev/null || rm -f "$ANSIBLE_VARS_FILE"
 
 # 7. Pastikan Nginx dan PHP-FPM aktif dan berjalan
 systemctl daemon-reload

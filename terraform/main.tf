@@ -177,10 +177,7 @@ resource "aws_route_table" "private_db" {
   count  = 2
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.nat[0].id : aws_nat_gateway.nat[count.index].id
-  }
+  # Subnet database privat terisolasi penuh tanpa default route ke NAT Gateway
 
   tags = {
     Name = "${var.project_name}-private-db-rt-${count.index + 1}"
@@ -251,7 +248,7 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-# 3. Security Group untuk Amazon RDS
+# 3. Security Group untuk Amazon RDS (Prinsip Least Privilege - Tanpa Egress)
 resource "aws_security_group" "rds_sg" {
   name        = "${var.project_name}-rds-sg"
   description = "Izinkan koneksi MySQL/MariaDB port 3306 HANYA dari EC2 App Security Group"
@@ -265,13 +262,7 @@ resource "aws_security_group" "rds_sg" {
     security_groups = [aws_security_group.ec2_sg.id]
   }
 
-  egress {
-    description = "Blokir seluruh inisiasi koneksi keluar dari RDS"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # Egress dihilangkan: RDS stateful, respon query diizinkan otomatis tanpa egress out-bound.
 
   tags = {
     Name = "${var.project_name}-rds-sg"
@@ -316,7 +307,7 @@ resource "aws_db_subnet_group" "rds_subnets" {
 resource "aws_db_instance" "rds" {
   identifier            = "${var.project_name}-database"
   engine                = "mysql"
-  engine_version        = "8.0"
+  engine_version        = var.db_engine_version
   instance_class        = var.db_instance_class
   allocated_storage     = var.db_allocated_storage
   max_allocated_storage = 50
@@ -546,23 +537,27 @@ resource "aws_launch_template" "app_lt" {
 
   # Self-bootstrapping Ansible Cloud-Init script
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tftpl", {
-    git_repo_url  = var.git_repo_url
-    iac_repo_url  = var.iac_repo_url
-    db_host       = aws_db_instance.rds.address
-    db_name       = var.db_name
-    db_user       = var.db_username
-    db_pass       = local.db_password_final
-    aws_region    = var.aws_region
-    alb_dns       = aws_lb.alb.dns_name
-    sns_recipient = local.sns_recipient
-    sns_topic_arn = aws_sns_topic.reports.arn
+    git_repo_url   = var.git_repo_url
+    iac_repo_url   = var.iac_repo_url
+    db_host        = aws_db_instance.rds.address
+    db_name        = var.db_name
+    db_user        = var.db_username
+    db_secret_name = aws_secretsmanager_secret.db_credentials.name
+    db_pass        = local.db_password_final
+    aws_region     = var.aws_region
+    alb_dns        = aws_lb.alb.dns_name
+    sns_recipient  = local.sns_recipient
+    sns_topic_arn  = aws_sns_topic.reports.arn
   }))
 
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name = "${var.project_name}-webserver"
-      Tier = "Application"
+      Name        = "${var.project_name}-webserver"
+      Project     = var.project_name
+      Environment = var.environment
+      Role        = "webserver"
+      Tier        = "Application"
     }
   }
 
@@ -598,12 +593,46 @@ resource "aws_autoscaling_group" "app_asg" {
 
   tag {
     key                 = "Name"
-    value               = "${var.project_name}-asg-instance"
+    value               = "${var.project_name}-webserver"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Project"
+    value               = var.project_name
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Environment"
+    value               = var.environment
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Role"
+    value               = "webserver"
     propagate_at_launch = true
   }
 
   lifecycle {
     create_before_destroy = true
     ignore_changes        = [desired_capacity]
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Auto Scaling Policy: Target-Tracking CPU Utilization (70%)
+# ------------------------------------------------------------------------------
+resource "aws_autoscaling_policy" "cpu_scaling_policy" {
+  name                   = "${var.project_name}-cpu-target-tracking"
+  autoscaling_group_name = aws_autoscaling_group.app_asg.name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+    target_value = 70.0
   }
 }

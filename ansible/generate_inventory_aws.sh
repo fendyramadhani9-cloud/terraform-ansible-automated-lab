@@ -7,14 +7,14 @@
 set -euo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
-PROJECT_TAG="${PROJECT_NAME:-kopdes-merah-putih}"
+PROJECT_TAG="${PROJECT_NAME:-kopdes}"
 OUTPUT_FILE="$(dirname "$0")/inventory.ini"
 
 echo "[INFO] Mengambil daftar instance EC2 untuk proyek '$PROJECT_TAG' di region $REGION..."
 
 INSTANCES=$(aws ec2 describe-instances \
     --region "$REGION" \
-    --filters "Name=tag:Project,Values=$PROJECT_TAG" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:Project,Values=$PROJECT_TAG,kopdes-merah-putih" "Name=instance-state-name,Values=running" \
     --query "Reservations[*].Instances[*].[InstanceId,PrivateIpAddress,Tags[?Key=='Name'].Value|[0]]" \
     --output json)
 

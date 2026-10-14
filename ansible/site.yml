@@ -38,17 +38,26 @@
       retries: 6
       delay: 5
       until: alb_response.status is defined and alb_response.status == 200
-      ignore_errors: true
+      failed_when: false
       when: alb_dns_name is defined and alb_dns_name != ""
 
     - name: Tampilkan Ringkasan Hasil Deployment AWS Native
       ansible.builtin.debug:
         msg:
           - "=================================================================="
-          - "DEPLOYMENT KOPDES MERAH PUTIH BERHASIL (AWS NATIVE ARCHITECTURE)!"
+          - "STATUS DEPLOYMENT KOPDES MERAH PUTIH (AWS NATIVE ARCHITECTURE)"
           - "=================================================================="
           - "ALB Entry Point: http://{{ alb_dns_name | default('Periksa output terraform alb_dns_name') }}"
           - "Database RDS   : {{ db_host }} (Amazon RDS MySQL: {{ db_name }})"
-          - "Email Service  : Amazon SES (Region: {{ aws_region | default('us-east-1') }})"
-          - "Health Check   : {{ 'OK (HTTP 200)' if (alb_response is defined and alb_response.status is defined and alb_response.status == 200) else 'Menunggu ALB Target Group InService' }}"
+          - "Email Service  : Amazon SNS (Region: {{ aws_region | default('us-east-1') }})"
+          - "Health Check   : {{ 'OK (HTTP 200)' if (alb_response is defined and alb_response.status is defined and alb_response.status == 200) else 'GAGAL / Menunggu ALB Target Group InService' }}"
           - "=================================================================="
+
+    - name: Pastikan verifikasi ALB lulus bila endpoint disediakan
+      ansible.builtin.assert:
+        that:
+          - alb_response.status is defined
+          - alb_response.status == 200
+        fail_msg: "Health check ALB gagal (HTTP {{ alb_response.status | default('N/A') }}). Instance belum siap melayani trafik."
+        success_msg: "Verifikasi ALB berhasil! Aplikasi siap digunakan."
+      when: alb_dns_name is defined and alb_dns_name != ""

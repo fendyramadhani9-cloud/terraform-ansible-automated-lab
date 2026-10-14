@@ -116,6 +116,12 @@ variable "iac_repo_url" {
 # ------------------------------------------------------------------------------
 # Database Tier (Amazon RDS MySQL Compatible)
 # ------------------------------------------------------------------------------
+variable "db_engine_version" {
+  description = "Versi MySQL engine untuk Amazon RDS (contoh: 8.0, 8.4). Standar support 8.0 berakhir Juli 2026."
+  type        = string
+  default     = "8.0"
+}
+
 variable "db_instance_class" {
   description = "Tipe instance Amazon RDS (MySQL compatible)"
   type        = string
