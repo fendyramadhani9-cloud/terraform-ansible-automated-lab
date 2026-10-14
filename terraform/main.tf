@@ -368,24 +368,23 @@ resource "aws_iam_role" "ec2_role" {
   }
 }
 
-# Kebijakan izin Amazon SES dan Secrets Manager
+# Kebijakan izin Amazon SNS dan Secrets Manager
 resource "aws_iam_policy" "ec2_policy" {
   count       = var.use_aws_academy ? 0 : 1
   name        = "${var.project_name}-ec2-least-privilege-policy"
-  description = "Izin least privilege untuk SES send-email dan Secrets Manager read"
+  description = "Izin least privilege untuk SNS publish laporan dan Secrets Manager read"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # 1. Amazon SES: Pengiriman email laporan rekapitulasi
+      # 1. Amazon SNS: Pengiriman email laporan rekapitulasi via Topik SNS
       {
-        Sid    = "AllowSesSendEmail"
+        Sid    = "AllowSnsPublishReport"
         Effect = "Allow"
         Action = [
-          "ses:SendEmail",
-          "ses:SendRawEmail"
+          "sns:Publish"
         ]
-        Resource = "*"
+        Resource = aws_sns_topic.reports.arn
       },
       # 2. AWS Secrets Manager: Baca kredensial DB
       {
@@ -555,8 +554,6 @@ resource "aws_launch_template" "app_lt" {
     db_pass       = local.db_password_final
     aws_region    = var.aws_region
     alb_dns       = aws_lb.alb.dns_name
-    ses_sender    = var.ses_sender_email
-    ses_recipient = local.sns_recipient
     sns_recipient = local.sns_recipient
     sns_topic_arn = aws_sns_topic.reports.arn
   }))
