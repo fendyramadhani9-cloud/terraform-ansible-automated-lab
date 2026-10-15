@@ -405,27 +405,25 @@ tail -f /var/log/user-data.log
 
 ## 8. Inisialisasi dan Validasi Database Amazon RDS
 
-Inisialisasi database Amazon RDS dirancang **100% idempotent** dan **concurrency-safe** menggunakan *MySQL Advisory Lock* (`GET_LOCK`), skema `CREATE TABLE IF NOT EXISTS`, dan sinkronisasi seed non-destruktif.
+Pada arsitektur cloud AWS Native yang terstandarisasi, node webserver pada Auto Scaling Group diperlakukan murni sebagai **stateless compute**. Instance EC2 **tidak menjalankan migrasi atau seed database saat proses bootstrap**, sehingga sepenuhnya terbebas dari risiko *race condition*, *lock contention*, ataupun kegagalan timeout antar-node saat ASG meluncurkan beberapa instance secara bersamaan maupun saat terjadi *scale-out*.
 
-### Opsi A: Otomatis saat Bootstrap EC2 (Fail-Fast & Zero-Touch)
-Setiap instance EC2 yang diluncurkan oleh Auto Scaling Group menjalankan inisialisasi skema & seed secara otomatis dengan prinsip **fail-fast**: jika koneksi database atau lock gagal, proses bootstrap langsung berhenti (`exit 1`) sehingga instance tidak akan dilaporkan sebagai sehat (*Healthy*) oleh ALB sebelum database benar-benar siap. Berkat *MySQL Advisory Lock* (`GET_LOCK`), instance-instance ASG tidak akan mengalami *race condition* dan tidak akan menimpa data transaksi pengguna.
-
-### Opsi B: Eksekusi Manual via AWS Systems Manager (Rekomendasi di AWS Academy)
-Karena instance EC2 berada di *private subnet* tanpa public IP, cara paling andal menjalankan inisialisasi dari komputer lokal Anda (tanpa perlu SSH, VPN, atau Bastion) adalah menggunakan helper AWS SSM:
+Inisialisasi skema tabel dan data seed awal Amazon RDS dijalankan **satu kali secara terpusat** setelah infrastruktur aktif menggunakan helper script AWS Systems Manager (SSM):
 
 ```bash
 bash ansible/run_db_init_ssm.sh
 ```
 
-Skrip ini akan:
-1. Menemukan instance EC2 webserver yang sedang running secara otomatis via AWS CLI.
-2. Mengirim perintah eksekusi `php /var/www/kopdes/database/init.php` melalui **AWS Systems Manager (SSM)**.
-3. Menampilkan status dan log inisialisasi tabel (`users`, `kopdes`, `memberships`, `products`, `transactions`) serta 15 unit KopDes wilayah Banyumas secara transparan.
+### Mekanisme Eksekusi:
+1. Skrip secara otomatis mencari instance EC2 webserver yang sedang running menggunakan AWS CLI.
+2. Mengirimkan perintah eksekusi `php /var/www/kopdes/database/init.php` ke instance tersebut melalui **AWS Systems Manager (SSM) Run Command**.
+3. Menunggu eksekusi selesai, memeriksa status (`Status`) dan kode respon (`ResponseCode` 0). Jika terjadi kegagalan (koneksi database terputus atau timeout), skrip akan menghentikan alur dengan exit code 1 dan menampilkan output error secara transparan.
+4. Menampilkan ringkasan tabel inti (`users`, `kopdes`, `memberships`, `products`, `transactions`) dan 15 unit KopDes wilayah Banyumas.
 
-### Opsi C: Eksekusi via Ansible Playbook (Jika Menggunakan Bastion / SSH SSM Plugin)
-```bash
-ansible-playbook -i ansible/inventory.ini ansible/playbook_db_init.yml
-```
+> [!NOTE]
+> Jika Anda memiliki akses SSH / VPN / Bastion ke private subnet, Anda juga dapat menjalankan inisialisasi menggunakan Ansible Playbook:
+> ```bash
+> ansible-playbook -i ansible/inventory.ini ansible/playbook_db_init.yml
+> ```
 
 ---
 
@@ -437,6 +435,10 @@ ansible-playbook -i ansible/inventory.ini ansible/playbook_db_init.yml
    http://kopdes-alb-123456789.us-east-1.elb.amazonaws.com
    ```
 3. Anda akan disambut oleh halaman login KopDes Merah Putih dengan animasi transisi yang mulus.
+
+> [!IMPORTANT]
+> **Catatan Teknis Health Check ALB**:
+> Health check ALB Target Group dikonfigurasi pada path `/index.php?page=login` (Port 80 HTTP, matcher 200). Pemeriksaan ini memverifikasi bahwa layer web server (Nginx dan PHP 8.3-FPM runtime) hidup dan mampu merender antarmuka aplikasi. Pada HTTP GET request, form login ditampilkan secara *stateless* tanpa query berat ke database. Oleh karena itu, kesiapan database Amazon RDS harus dipastikan melalui penyelesaian Langkah 8 (`run_db_init_ssm.sh`) sebelum pengguna melakukan autentikasi login atau transaksi.
 
 ### Kredensial Akun Pengujian:
 

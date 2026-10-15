@@ -70,14 +70,17 @@ OUTPUT=$(aws ssm get-command-invocation \
   --region "$REGION" \
   --command-id "$COMMAND_ID" \
   --instance-id "$INSTANCE_ID" \
-  --query "[StandardOutputContent, StandardErrorContent]" \
-  --output json 2>/dev/null || echo '["", ""]')
+  --query "[Status, ResponseCode, StandardOutputContent, StandardErrorContent]" \
+  --output json 2>/dev/null || echo '["Failed", 1, "", "Gagal mengambil output eksekusi SSM invocation"]')
 
-STDOUT=$(echo "$OUTPUT" | jq -r '.[0] // empty')
-STDERR=$(echo "$OUTPUT" | jq -r '.[1] // empty')
+STATUS=$(echo "$OUTPUT" | jq -r '.[0] // empty')
+RESPONSE_CODE=$(echo "$OUTPUT" | jq -r '.[1] // 1')
+STDOUT=$(echo "$OUTPUT" | jq -r '.[2] // empty')
+STDERR=$(echo "$OUTPUT" | jq -r '.[3] // empty')
 
 echo "=================================================================="
 echo "HASIL EKSEKUSI INISIALISASI DATABASE (AWS SSM):"
+echo "Status: $STATUS | Exit Code: $RESPONSE_CODE"
 echo "=================================================================="
 if [ -n "$STDOUT" ]; then
   echo "$STDOUT"
@@ -88,10 +91,10 @@ if [ -n "$STDERR" ]; then
   echo "$STDERR"
 fi
 
-if [ "$STATUS" = "Success" ]; then
+if [ "$STATUS" = "Success" ] && [ "$RESPONSE_CODE" = "0" ]; then
   echo "[OK] $(date) - Inisialisasi skema dan seed data Amazon RDS berhasil!"
   exit 0
 else
-  echo "[ERROR] Inisialisasi database via SSM gagal dengan status: $STATUS" >&2
+  echo "[ERROR] Inisialisasi database via SSM gagal! (Status: $STATUS, ResponseCode: $RESPONSE_CODE)" >&2
   exit 1
 fi

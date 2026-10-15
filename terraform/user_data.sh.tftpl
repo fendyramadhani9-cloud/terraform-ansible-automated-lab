@@ -116,20 +116,7 @@ fi
 # Hapus file variabel sementara yang berisi secret
 shred -u "$ANSIBLE_VARS_FILE" 2>/dev/null || rm -f "$ANSIBLE_VARS_FILE"
 
-# 7. Inisialisasi skema dan seed Amazon RDS (fail-fast & concurrency-safe via MySQL advisory lock)
-echo "[INFO] Menjalankan inisialisasi skema dan seed data Amazon RDS..."
-if [ ! -f "$APP_DIR/database/init.php" ]; then
-    echo "[FATAL] File $APP_DIR/database/init.php tidak ditemukan!" >&2
-    exit 1
-fi
-
-if ! php "$APP_DIR/database/init.php"; then
-    echo "[FATAL] Inisialisasi database Amazon RDS gagal! Bootstrap dihentikan agar node tidak melayani trafik dalam kondisi database belum siap." >&2
-    exit 1
-fi
-echo "[OK] Inisialisasi database Amazon RDS berhasil terverifikasi."
-
-# 8. Pastikan Nginx dan PHP-FPM aktif dan berjalan
+# 7. Pastikan Nginx dan PHP-FPM aktif dan berjalan
 systemctl daemon-reload
 PHP_FPM_SVC=$(systemctl list-unit-files | grep -oE "php[0-9.]*-fpm" | head -n 1 || echo "php-fpm")
 systemctl enable --now "$PHP_FPM_SVC" || true
@@ -137,4 +124,4 @@ systemctl enable --now nginx || true
 systemctl restart "$PHP_FPM_SVC" || true
 systemctl restart nginx || true
 
-echo "[OK] $(date) - Bootstrap instance KopDes selesai dengan sukses! Node siap menerima trafik dari ALB."
+echo "[OK] $(date) - Bootstrap instance webserver KopDes selesai dengan sukses! Node siap menerima trafik dari ALB."

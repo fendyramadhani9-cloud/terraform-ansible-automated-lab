@@ -105,6 +105,10 @@ Setiap instance baru yang diluncurkan oleh Auto Scaling Group menjalankan skrip 
    ansible-playbook -i "localhost," -c local /opt/kopdes-iac/ansible/playbook_app.yml ...
    ```
 6. Mengonfigurasi Nginx, PHP-FPM, dan template `.env` agar node web siap melayani trafik dari Application Load Balancer secara murni *stateless*.
+7. Inisialisasi skema tabel dan seed database Amazon RDS dijalankan satu kali secara terpusat via AWS Systems Manager:
+   ```bash
+   bash ansible/run_db_init_ssm.sh
+   ```
 
 ---
 
