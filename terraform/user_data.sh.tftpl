@@ -116,11 +116,18 @@ fi
 # Hapus file variabel sementara yang berisi secret
 shred -u "$ANSIBLE_VARS_FILE" 2>/dev/null || rm -f "$ANSIBLE_VARS_FILE"
 
-# 7. Inisialisasi skema dan seed Amazon RDS jika belum terinisialisasi (concurrency-safe via MySQL advisory lock)
-echo "[INFO] Memeriksa dan menginisialisasi skema Amazon RDS..."
-if [ -f "$APP_DIR/database/init.php" ]; then
-    php "$APP_DIR/database/init.php" || echo "[WARN] Inisialisasi database otomatis via bootstrap menemui kendala. Inisialisasi dapat dipicu via SSM: bash ansible/run_db_init_ssm.sh."
+# 7. Inisialisasi skema dan seed Amazon RDS (fail-fast & concurrency-safe via MySQL advisory lock)
+echo "[INFO] Menjalankan inisialisasi skema dan seed data Amazon RDS..."
+if [ ! -f "$APP_DIR/database/init.php" ]; then
+    echo "[FATAL] File $APP_DIR/database/init.php tidak ditemukan!" >&2
+    exit 1
 fi
+
+if ! php "$APP_DIR/database/init.php"; then
+    echo "[FATAL] Inisialisasi database Amazon RDS gagal! Bootstrap dihentikan agar node tidak melayani trafik dalam kondisi database belum siap." >&2
+    exit 1
+fi
+echo "[OK] Inisialisasi database Amazon RDS berhasil terverifikasi."
 
 # 8. Pastikan Nginx dan PHP-FPM aktif dan berjalan
 systemctl daemon-reload

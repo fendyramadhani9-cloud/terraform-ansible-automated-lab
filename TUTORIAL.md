@@ -407,8 +407,8 @@ tail -f /var/log/user-data.log
 
 Inisialisasi database Amazon RDS dirancang **100% idempotent** dan **concurrency-safe** menggunakan *MySQL Advisory Lock* (`GET_LOCK`), skema `CREATE TABLE IF NOT EXISTS`, dan sinkronisasi seed non-destruktif.
 
-### Opsi A: Otomatis saat Bootstrap EC2 (Zero-Touch)
-Setiap instance EC2 yang diluncurkan oleh Auto Scaling Group akan memeriksa dan menginisialisasi skema secara otomatis jika belum tersedia tanpa menimpa data transaksi atau akun yang sudah dibuat pengguna.
+### Opsi A: Otomatis saat Bootstrap EC2 (Fail-Fast & Zero-Touch)
+Setiap instance EC2 yang diluncurkan oleh Auto Scaling Group menjalankan inisialisasi skema & seed secara otomatis dengan prinsip **fail-fast**: jika koneksi database atau lock gagal, proses bootstrap langsung berhenti (`exit 1`) sehingga instance tidak akan dilaporkan sebagai sehat (*Healthy*) oleh ALB sebelum database benar-benar siap. Berkat *MySQL Advisory Lock* (`GET_LOCK`), instance-instance ASG tidak akan mengalami *race condition* dan tidak akan menimpa data transaksi pengguna.
 
 ### Opsi B: Eksekusi Manual via AWS Systems Manager (Rekomendasi di AWS Academy)
 Karena instance EC2 berada di *private subnet* tanpa public IP, cara paling andal menjalankan inisialisasi dari komputer lokal Anda (tanpa perlu SSH, VPN, atau Bastion) adalah menggunakan helper AWS SSM:
